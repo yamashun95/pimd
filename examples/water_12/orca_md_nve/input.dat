@@ -1,0 +1,14 @@
+<input_style>
+NEW
+
+<method>
+MD
+
+<ensemble>
+NVE
+
+<ipotential>
+ORCA
+
+<orca_command>
+'orca'
