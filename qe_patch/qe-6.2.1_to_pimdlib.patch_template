@@ -1,0 +1,3494 @@
+diff -Nrup q-e-qe-6.2.1.original/Modules/Makefile q-e-qe-6.2.1/Modules/Makefile
+--- q-e-qe-6.2.1.original/Modules/Makefile	2020-01-16 21:30:22.000000000 +0900
++++ q-e-qe-6.2.1/Modules/Makefile	2020-01-31 00:43:50.000000000 +0900
+@@ -4,7 +4,7 @@ include ../make.inc
+ 
+ # location of needed modules
+ MODFLAGS= $(MOD_FLAG)../iotk/src $(MOD_FLAG)../ELPA/src $(MOD_FLAG)../FFTXlib $(MOD_FLAG)../LAXlib $(MOD_FLAG)../UtilXlib \
+-          $(MOD_FLAG)../KS_Solvers/CG $(IFLAGS) $(MOD_FLAG).
++          $(MOD_FLAG)../KS_Solvers/CG $(IFLAGS) $(MOD_FLAG). $(MOD_FLAG)CMAKEBUILDDIR
+ 
+ # list of modules
+ 
+@@ -114,7 +114,7 @@ xsf.o \
+ wyckoff.o \
+ wypos.o \
+ zdotc_wrapper.o  \
+-zvscal.o 
++zvscal.o
+ 
+ # list of subrooutines and functions (not modules) previously found in flib/
+ 
+diff -Nrup q-e-qe-6.2.1.original/Modules/autopilot.f90 q-e-qe-6.2.1/Modules/autopilot.f90
+--- q-e-qe-6.2.1.original/Modules/autopilot.f90	2020-01-16 21:30:22.000000000 +0900
++++ q-e-qe-6.2.1/Modules/autopilot.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -218,7 +218,7 @@ CONTAINS
+     INTEGER, INTENT(IN) :: ndr    !  I/O unit number
+     CHARACTER(LEN=*), INTENT(IN) :: outdir
+     CHARACTER(LEN=256) :: dirname, filename
+-    CHARACTER (LEN=6), EXTERNAL :: int_to_char
++    CHARACTER (LEN=6), EXTERNAL :: int_to_char_
+     LOGICAL :: restart_p = .FALSE.
+     INTEGER :: strlen
+     ! right now cp_readfile is called with outdir = ' '
+@@ -228,7 +228,7 @@ CONTAINS
+ 
+ 
+     IF (ionode) THEN
+-       dirname = 'RESTART' // int_to_char( ndr )
++       dirname = 'RESTART' // int_to_char_( ndr )
+        IF ( LEN( outdir ) > 1 ) THEN
+           strlen  = index(outdir,' ') - 1
+           dirname = outdir(1:strlen) // '/' // dirname
+diff -Nrup q-e-qe-6.2.1.original/Modules/command_line_options.f90 q-e-qe-6.2.1/Modules/command_line_options.f90
+--- q-e-qe-6.2.1.original/Modules/command_line_options.f90	2020-01-16 21:30:22.000000000 +0900
++++ q-e-qe-6.2.1/Modules/command_line_options.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -53,7 +53,7 @@ CONTAINS
+      INTEGER :: narg
+      LOGICAL :: read_string
+      CHARACTER(LEN=256) :: arg 
+-     CHARACTER(LEN=6), EXTERNAL :: int_to_char
++     CHARACTER(LEN=6), EXTERNAL :: int_to_char_
+      !
+      command_line = ' '
+      read_string = PRESENT ( input_command_line )
+@@ -156,7 +156,7 @@ CONTAINS
+      GO TO 10
+      ! ... something wrong: notify and continue
+ 15   CALL infomsg ('get_command_line', 'unexpected argument # ' // &
+-                  & int_to_char(narg) // ':' //TRIM(arg))
++                  & int_to_char_(narg) // ':' //TRIM(arg))
+      narg = narg + 1
+      GO TO 10
+      ! ... normal exit
+diff -Nrup q-e-qe-6.2.1.original/Modules/constraints_module.f90 q-e-qe-6.2.1/Modules/constraints_module.f90
+--- q-e-qe-6.2.1.original/Modules/constraints_module.f90	2020-01-16 21:30:22.000000000 +0900
++++ q-e-qe-6.2.1/Modules/constraints_module.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -111,7 +111,7 @@ CONTAINS
+       LOGICAL,ALLOCATABLE ::       tmp_target_set(:)
+       REAL(DP),ALLOCATABLE ::      tmp_target_inp(:)
+       !
+-      CHARACTER(len=6), EXTERNAL :: int_to_char
++      CHARACTER(len=6), EXTERNAL :: int_to_char_
+       !
+       !
+       nconstr    = nconstr_inp
+@@ -196,7 +196,7 @@ CONTAINS
+                               &  5X,"dmax   = ",F12.8)' ) &
+                   constr_target(ia), dmax
+                CALL errore( 'init_constraint', 'the target for constraint ' //&
+-                           & trim( int_to_char( ia ) ) // ' is larger than '  //&
++                           & trim( int_to_char_( ia ) ) // ' is larger than '  //&
+                            & 'the largest possible value', 1 )
+                !
+             ENDIF
+diff -Nrup q-e-qe-6.2.1.original/Modules/environment.f90 q-e-qe-6.2.1/Modules/environment.f90
+--- q-e-qe-6.2.1.original/Modules/environment.f90	2020-01-16 21:30:22.000000000 +0900
++++ q-e-qe-6.2.1/Modules/environment.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -51,7 +51,7 @@ CONTAINS
+ 
+     LOGICAL           :: exst, debug = .false.
+     CHARACTER(LEN=80) :: code_version, uname
+-    CHARACTER(LEN=6), EXTERNAL :: int_to_char
++    CHARACTER(LEN=6), EXTERNAL :: int_to_char_
+     INTEGER :: ios, crashunit
+     INTEGER, EXTERNAL :: find_free_unit
+ 
+@@ -76,7 +76,7 @@ CONTAINS
+     ! ... for compatibility with PWSCF
+ 
+ #if defined(__MPI)
+-    nd_nmbr = TRIM ( int_to_char( me_image+1 ))
++    nd_nmbr = TRIM ( int_to_char_( me_image+1 ))
+ #else
+     nd_nmbr = ' '
+ #endif
+@@ -105,8 +105,8 @@ CONTAINS
+        debug = .true.
+ #endif
+        IF (me_image == root_image .OR. debug ) THEN
+-          uname = 'out.' // trim(int_to_char( my_image_id )) // '_' // &
+-               trim(int_to_char( me_image))
++          uname = 'out.' // trim(int_to_char_( my_image_id )) // '_' // &
++               trim(int_to_char_( me_image))
+           OPEN ( unit = stdout, file = TRIM(uname),status='unknown')
+        ELSE
+ #if defined(_WIN32)
+diff -Nrup q-e-qe-6.2.1.original/Modules/int_to_char.f90 q-e-qe-6.2.1/Modules/int_to_char.f90
+--- q-e-qe-6.2.1.original/Modules/int_to_char.f90	2020-01-16 21:30:22.000000000 +0900
++++ q-e-qe-6.2.1/Modules/int_to_char.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -6,7 +6,7 @@
+ ! or http://www.gnu.org/copyleft/gpl.txt .
+ !
+   !-----------------------------------------------------------------------
+-  FUNCTION int_to_char( i )
++  FUNCTION int_to_char_( i )
+     !-----------------------------------------------------------------------
+     !
+     ! ... converts an integer number of up to 6 figures
+@@ -15,7 +15,7 @@
+     IMPLICIT NONE
+     !
+     INTEGER, INTENT(IN) :: i
+-    CHARACTER (LEN=6)   :: int_to_char
++    CHARACTER (LEN=6)   :: int_to_char_
+     CHARACTER :: c
+     INTEGER   :: n, j, nc
+     LOGICAL   :: neg
+@@ -33,7 +33,7 @@
+     !
+     j = 1
+     DO WHILE( j <= nc ) 
+-       int_to_char(j:j) = CHAR( MOD( n, 10 ) + ICHAR( '0' ) )
++       int_to_char_(j:j) = CHAR( MOD( n, 10 ) + ICHAR( '0' ) )
+        n = n / 10
+        IF( n == 0 ) EXIT
+        j = j + 1
+@@ -41,22 +41,22 @@
+     !
+     IF( j <= nc ) THEN
+        DO n = 1, j/2
+-          c = int_to_char( n : n )
+-          int_to_char( n : n ) = int_to_char( j-n+1 : j-n+1 )
+-          int_to_char( j-n+1 : j-n+1 ) = c
++          c = int_to_char_( n : n )
++          int_to_char_( n : n ) = int_to_char_( j-n+1 : j-n+1 )
++          int_to_char_( j-n+1 : j-n+1 ) = c
+        END DO
+-       IF( j < nc ) int_to_char(j+1:nc) = ' '
++       IF( j < nc ) int_to_char_(j+1:nc) = ' '
+     ELSE
+-       int_to_char(:) = '*'
++       int_to_char_(:) = '*'
+     END IF
+     !
+     IF( neg ) THEN
+        DO n = nc+1, 2, -1
+-          int_to_char(n:n) = int_to_char(n-1:n-1)
++          int_to_char_(n:n) = int_to_char_(n-1:n-1)
+        END DO
+-       int_to_char(1:1) = '-'
++       int_to_char_(1:1) = '-'
+     END IF
+     !
+     RETURN
+     !
+-  END FUNCTION int_to_char
++  END FUNCTION int_to_char_
+diff -Nrup q-e-qe-6.2.1.original/Modules/io_base.f90 q-e-qe-6.2.1/Modules/io_base.f90
+--- q-e-qe-6.2.1.original/Modules/io_base.f90	2020-01-16 21:30:22.000000000 +0900
++++ q-e-qe-6.2.1/Modules/io_base.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -392,6 +392,10 @@ MODULE io_base
+ #if defined (__HDF5)
+       USE qeh5_base_module
+ #endif
++
++      ! ...  added for PIMD calculation
++      use common_variables, only : myrank_main
++
+       !
+       IMPLICIT NONE
+       !
+@@ -435,6 +439,10 @@ MODULE io_base
+       CHARACTER(LEN=10)          :: bool_char = ".FALSE.", datasets(4)        
+       !
+ #endif
++
++      ! ...  added for PIMD calculation
++      character(len=1024) :: ca
++
+       me_in_group     = mp_rank( intra_group_comm )
+       nproc_in_group  = mp_size( intra_group_comm )
+       ionode_in_group = ( me_in_group == root_in_group )
+@@ -459,11 +467,14 @@ MODULE io_base
+       ngm_g = ngm
+       CALL mp_sum( ngm_g, intra_group_comm )
+       !
+-      filename = TRIM( dirname ) // 'charge-density.dat'
++
++      ! ...  added for PIMD calculation
++      write(ca,'(i0)') myrank_main
++      filename = TRIM( dirname ) // 'charge-density_'//trim(ca)//'.dat'
+       ierr = 0
+ #if defined (__HDF5)
+       IF ( ionode_in_group ) CALL qeh5_openfile(h5file, FILE = &
+-           TRIM(dirname)//'charge-density.hdf5', ACTION = 'write', ERROR = ierr) 
++   TRIM(dirname)//'charge-density_'//trim(ca)//'.hdf5', ACTION = 'write', ERROR = ierr) 
+ #else
+       IF ( ionode_in_group ) OPEN ( UNIT = iun, FILE = TRIM( filename ), &
+                 FORM = 'unformatted', STATUS = 'unknown', iostat = ierr )
+@@ -606,6 +617,10 @@ MODULE io_base
+ #if defined (__HDF5) 
+       USE qeh5_base_module
+ #endif
++
++      ! ...  added for PIMD calculation
++      use common_variables, only : myrank_main
++
+       IMPLICIT NONE
+       !
+       CHARACTER(LEN=*), INTENT(IN) :: dirname
+@@ -633,6 +648,10 @@ MODULE io_base
+       LOGICAL                  :: ionode_in_group, gamma_only_
+       CHARACTER(LEN=320)       :: filename
+       !
++
++      ! ...  added for PIMD calculation
++      character(len=1024) :: ca
++
+ #if defined __HDF5
+       TYPE ( qeh5_file)       :: h5file
+       TYPE ( qeh5_dataset)    :: h5dset_mill, h5dset_rho_g
+@@ -646,9 +665,13 @@ MODULE io_base
+         datasets(3)  = "m_y"
+         datasets(4)  = "m_z"
+       END IF 
+-      filename = TRIM( dirname ) // 'charge-density.hdf5'
++      ! ...  added for PIMD calculation
++      write(ca,'(i0)') myrank_main
++      filename = TRIM( dirname ) // 'charge-density_'//trim(ca)//'.hdf5'
+ #else 
+-      filename = TRIM( dirname ) // 'charge-density.dat'
++      ! ...  added for PIMD calculation
++      write(ca,'(i0)') myrank_main
++      filename = TRIM( dirname ) // 'charge-density_'//trim(ca)//'.dat'
+ #endif 
+       !
+       ngm  = SIZE (rho, 1)
+diff -Nrup q-e-qe-6.2.1.original/Modules/io_files.f90 q-e-qe-6.2.1/Modules/io_files.f90
+--- q-e-qe-6.2.1.original/Modules/io_files.f90	2020-01-16 21:30:22.000000000 +0900
++++ q-e-qe-6.2.1/Modules/io_files.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -53,24 +53,29 @@ MODULE io_files
+   ! ... The units where various variables are saved
+   ! ... Only units that are kept open during the run should be listed here
+   !
+-  INTEGER :: iunres      =  1 ! unit for the restart of the run
+-  INTEGER :: iunpun      =  4 ! unit for saving the final results (data-file.xml)
+-  INTEGER :: iunwfc      = 10 ! unit with wavefunctions
+-  INTEGER :: iunoldwfc   = 11 ! unit with old wavefunctions
+-  INTEGER :: iunoldwfc2  = 12 ! as above at step -2
+-  INTEGER :: iunhub      = 13 ! unit for saving Hubbard-U atomic wfcs 
+-  INTEGER :: iunsat      = 14 ! unit for saving (orthogonal) atomic wfcs * S
+-  INTEGER :: iunmix      = 15 ! unit for saving mixing information
+-  INTEGER :: iunwfc_exx  = 16 ! unit with exx wavefunctions
+-  !
+-  INTEGER :: iunexit     = 26 ! unit for a soft exit  
+-  INTEGER :: iunupdate   = 27 ! unit for saving old positions (extrapolation)
+-  INTEGER :: iunnewimage = 28 ! unit for parallelization among images
+-  INTEGER :: iunlock     = 29 ! as above (locking file)
+-  !
+-  INTEGER :: iunbfgs     = 30 ! unit for the bfgs restart file
+-  !
+-  INTEGER :: iuntmp      = 90 ! temporary unit, when used must be closed ASAP
++  !! ... The unit numbers are changed  not to coincide with those in PIMD 
++  INTEGER :: iunres      =  1000 !  1 ! unit for the restart of the run
++  INTEGER :: iunpun      =  4000 !  4 ! unit for saving the final results (data-file.xml)
++  INTEGER :: iunwfc      = 10000 ! 10 ! unit with wavefunctions
++  INTEGER :: iunoldwfc   = 11000 ! 11 ! unit with old wavefunctions
++  INTEGER :: iunoldwfc2  = 12000 ! 12 ! as above at step -2
++  !! ... For 3rd,4th order extrapolation
++  INTEGER :: iunoldwfc3  = 21000 !  as above at step -3
++  INTEGER :: iunoldwfc4  = 22000 !  as above at step -4
++  !!
++  INTEGER :: iunhub      = 13000 ! 13 ! unit for saving Hubbard-U atomic wfcs 
++  INTEGER :: iunsat      = 14000 ! 14 ! unit for saving (orthogonal) atomic wfcs * S
++  INTEGER :: iunmix      = 15000 ! 15 ! unit for saving mixing information
++  INTEGER :: iunwfc_exx  = 16000 ! 16 ! unit with exx wavefunctions
++  !                             
++  INTEGER :: iunexit     = 26000 ! 26 ! unit for a soft exit  
++  INTEGER :: iunupdate   = 27000 ! 27 ! unit for saving old positions (extrapolation)
++  INTEGER :: iunnewimage = 28000 ! 28 ! unit for parallelization among images
++  INTEGER :: iunlock     = 29000 ! 29 ! as above (locking file)
++  !                            
++  INTEGER :: iunbfgs     = 30000 ! 30 ! unit for the bfgs restart file
++  !                            
++  INTEGER :: iuntmp      = 90000 ! 90 ! temporary unit, when used must be closed ASAP
+   !
+   INTEGER :: nwordwfc    =  2 ! length of record in wavefunction file
+   INTEGER :: nwordatwfc  =  2 ! length of record in atomic wfc file
+@@ -79,17 +84,17 @@ MODULE io_files
+   !
+   !... finite electric field
+   !
+-  INTEGER :: iunefield   = 31 ! unit to store wavefunction for calculating
++  INTEGER :: iunefield   = 31000 ! 31 ! unit to store wavefunction for calculating
+                               ! electric field operator
+-  INTEGER :: iunefieldm  = 32 ! unit to store projectors for hermitean
++  INTEGER :: iunefieldm  = 32000 ! 32 ! unit to store projectors for hermitean
+                               ! electric field potential
+-  INTEGER :: iunefieldp  = 33 ! unit to store projectors for hermitean 
++  INTEGER :: iunefieldp  = 33000 ! 33 ! unit to store projectors for hermitean 
+                               ! electric field potential
+   !
+   ! ... For Wannier Hamiltonian
+   !
+-  INTEGER :: iunwpp   = 113
+-  INTEGER :: iunwf    = 114
++  INTEGER :: iunwpp   = 11300 ! 113
++  INTEGER :: iunwf    = 11400 ! 114
+   INTEGER :: nwordwpp = 2
+   INTEGER :: nwordwf  = 2
+   !
+@@ -149,21 +154,29 @@ CONTAINS
+     !
+     INTEGER :: ios
+     !
+-    CHARACTER(LEN=6), EXTERNAL :: int_to_char
++    CHARACTER(LEN=6), EXTERNAL :: int_to_char_
++
++    ! ...  added for PIMD calculation
++    logical :: od
++
+     !
+     ! ... check whether the scratch directory is writable
+     ! ... note that file_path should end by a "/"
+     !
+     IF ( PRESENT (process_id ) ) THEN
+        OPEN( UNIT = 4, FILE = TRIM(file_path) // 'test' // &
+-           & TRIM( int_to_char ( process_id ) ), &
++           & TRIM( int_to_char_( process_id ) ), &
+            & STATUS = 'UNKNOWN', FORM = 'UNFORMATTED', IOSTAT = ios )
+     ELSE
+        OPEN( UNIT = 4, FILE = TRIM(file_path) // 'test', &
+              STATUS = 'UNKNOWN', FORM = 'UNFORMATTED', IOSTAT = ios )
+     END IF
+     !
+-    CLOSE( UNIT = 4, STATUS = 'DELETE' )
++
++    ! ...  added for PIMD calculation
++    inquire(4,opened=od)
++    if(od) CLOSE( UNIT = 4, STATUS = 'DELETE' )
++
+     !
+     !-----------------------------------------------------------------------
+   END FUNCTION check_writable 
+diff -Nrup q-e-qe-6.2.1.original/Modules/io_global.f90 q-e-qe-6.2.1/Modules/io_global.f90
+--- q-e-qe-6.2.1.original/Modules/io_global.f90	2020-01-16 21:30:22.000000000 +0900
++++ q-e-qe-6.2.1/Modules/io_global.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -19,7 +19,7 @@ MODULE io_global
+   !
+   INTEGER, PARAMETER :: stdin  = 5    ! unit connected to standard input
+   INTEGER :: qestdin= 9    ! unit connected to input file (xml or text)
+-  INTEGER :: stdout = 6    ! unit connected to standard output
++  INTEGER :: stdout = 6666 ! 6    ! unit connected to standard output
+   !
+   ! For parallel execution: I/O within an image
+   ! These are set at startup by calling mp_world_start
+diff -Nrup q-e-qe-6.2.1.original/Modules/qexml.f90 q-e-qe-6.2.1/Modules/qexml.f90
+--- q-e-qe-6.2.1.original/Modules/qexml.f90	2020-01-16 21:30:23.000000000 +0900
++++ q-e-qe-6.2.1/Modules/qexml.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -2166,6 +2166,10 @@ CONTAINS
+       !------------------------------------------------------------------------
+       !
+       ! Writes charge density rho, one plane at a time.
++
++      ! ...  added for PIMD calculation
++      use common_variables, only : myrank_main
++
+       !
+       IMPLICIT NONE
+       !
+@@ -2179,6 +2183,10 @@ CONTAINS
+       CHARACTER(256) :: filename
+       REAL(DP), ALLOCATABLE :: plane(:,:)
+       !
++
++      ! ...  added for PIMD calculation
++      character(len=1024) :: ca
++
+       !
+       CALL iotk_free_unit( iunaux )
+       !
+@@ -2187,11 +2195,15 @@ CONTAINS
+       !
+       IF ( binary_ ) THEN
+          !
+-         filename = trim( datadir_out ) // '/' //'charge-density.dat'
++         ! ...  added for PIMD calculation
++         write(ca,'(i0)') myrank_main
++         filename = trim( datadir_out ) // '/' //'charge-density_'//trim(ca)//'.dat'
+          !
+       ELSE
+          !
+-         filename = trim( datadir_out ) // '/' //'charge-density.xml'
++         ! ...  added for PIMD calculation
++         write(ca,'(i0)') myrank_main
++         filename = trim( datadir_out ) // '/' //'charge-density_'//trim(ca)//'.xml'
+          !
+       ENDIF
+       !
+@@ -4579,6 +4591,10 @@ CONTAINS
+       ! if RHO is specified, the whole charge density is read;
+       ! if RHOZ is specified only the IP-th plane is read
+       !
++
++      ! ...  added for PIMD calculation
++      use common_variables, only : myrank_main
++
+       IMPLICIT NONE
+       !
+       INTEGER,   OPTIONAL, INTENT(out) :: nr1, nr2, nr3
+@@ -4591,17 +4607,24 @@ CONTAINS
+       LOGICAL        :: lexists
+       CHARACTER(256) :: filename
+ 
++      ! ...  added for PIMD calculation
++      character(len=1024) :: ca
++
+       ierr = 0
+       !
+       !
+       CALL iotk_free_unit( iunaux )
+       !
+-      filename = trim( datadir_in ) // '/' // 'charge-density.dat'
++      ! ...  added for PIMD calculation
++      write(ca,'(i0)') myrank_main
++      filename = trim( datadir_in ) // '/' // 'charge-density_'//trim(ca)//'.dat'
+       lexists  = check_file_exst( trim(filename) )
+       !
+       IF ( .not. lexists ) THEN
+           !
+-          filename = trim( datadir_in ) // '/' // 'charge-density.xml'
++          ! ...  added for PIMD calculation
++          write(ca,'(i0)') myrank_main
++          filename = trim( datadir_in ) // '/' // 'charge-density_'//trim(ca)//'.xml'
+           lexists  = check_file_exst( trim(filename) )
+           !
+       ENDIF
+diff -Nrup q-e-qe-6.2.1.original/Modules/qexsd.f90 q-e-qe-6.2.1/Modules/qexsd.f90
+--- q-e-qe-6.2.1.original/Modules/qexsd.f90	2020-01-16 21:30:23.000000000 +0900
++++ q-e-qe-6.2.1/Modules/qexsd.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -1316,10 +1316,20 @@ CONTAINS
+     TYPE ( total_energy_type )      :: tot_en_obj
+     TYPE ( matrix_type )            :: mat_forces, mat_stress  
+     !
++
++    ! ...  added for PIMD calculation
++    integer, save :: max_steps_new
++
++
+     IF ( i_step .EQ. 1 ) THEN 
+        ALLOCATE (steps(max_steps))
+        step_counter = 0
++
++    ! ...  added for PIMD calculation
++       max_steps_new = max_steps
++
+     END IF 
++
+     step_counter = step_counter+1
+     !
+     step_obj%tagname="step"
+@@ -1358,7 +1368,14 @@ CONTAINS
+        step_obj%FCP_tot_charge_ispresent = .TRUE. 
+     END IF 
+     !  
+-    ! 
++
++    ! ...  added for PIMD calculation
++    if(step_counter > max_steps_new) then
++       DEALLOCATE(steps)
++       max_steps_new = 10*max_steps_new
++       ALLOCATE (steps(max_steps_new))
++    end if
++
+     steps(step_counter) = step_obj
+     steps(step_counter)%lwrite  = .TRUE.
+     steps(step_counter)%lread   = .TRUE. 
+diff -Nrup q-e-qe-6.2.1.original/Modules/read_cards.f90 q-e-qe-6.2.1/Modules/read_cards.f90
+--- q-e-qe-6.2.1.original/Modules/read_cards.f90	2020-01-16 21:30:23.000000000 +0900
++++ q-e-qe-6.2.1/Modules/read_cards.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -1596,7 +1596,7 @@ CONTAINS
+       !
+       INTEGER                    :: i, ib
+       CHARACTER(len=5)           :: i_char
+-      CHARACTER(len=6), EXTERNAL :: int_to_char
++      CHARACTER(len=6), EXTERNAL :: int_to_char_
+       !
+       !
+       IF ( twannier ) &
+@@ -1613,7 +1613,7 @@ CONTAINS
+          !
+          DO i = 1, nwf_max
+             !
+-            i_char = int_to_char( i )
++            i_char = int_to_char_( i )
+             !
+             IF ( matches( ' ' // trim( i_char ) // ',', &
+                            ' ' // trim( input_line ) // ',' ) ) THEN
+diff -Nrup q-e-qe-6.2.1.original/Modules/version.f90 q-e-qe-6.2.1/Modules/version.f90
+--- q-e-qe-6.2.1.original/Modules/version.f90	1970-01-01 09:00:00.000000000 +0900
++++ q-e-qe-6.2.1/Modules/version.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -0,0 +1,18 @@
++!
++! Copyright (C) 2003-2017 Quantum ESPRESSO group
++! This file is distributed under the terms of the
++! GNU General Public License. See the file `License'
++! in the root directory of the present distribution,
++! or http://www.gnu.org/copyleft/gpl.txt .
++!
++!----------------------------------------------------------------------------
++MODULE global_version
++  !
++  IMPLICIT NONE
++  !
++  SAVE
++  !
++  CHARACTER (LEN=6) :: version_number = '6.2'
++  CHARACTER (LEN=12) :: svn_revision = 'unknown'
++  !
++END MODULE global_version
+diff -Nrup q-e-qe-6.2.1.original/Modules/xml_io_base.f90 q-e-qe-6.2.1/Modules/xml_io_base.f90
+--- q-e-qe-6.2.1.original/Modules/xml_io_base.f90	2020-01-16 21:30:23.000000000 +0900
++++ q-e-qe-6.2.1/Modules/xml_io_base.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -51,7 +51,7 @@ MODULE xml_io_base
+       !
+       INTEGER                    :: ierr
+       !
+-      CHARACTER(LEN=6), EXTERNAL :: int_to_char
++      CHARACTER(LEN=6), EXTERNAL :: int_to_char_
+       !
+       IF ( ionode ) ierr = f_mkdir_safe( TRIM( dirname ) )
+       CALL mp_bcast ( ierr, ionode_id, intra_image_comm )
+@@ -65,7 +65,9 @@ MODULE xml_io_base
+       !
+       ! ... check whether the scratch directory is writable
+       !
+-      IF ( ionode ) ierr = check_writable ( dirname, me_image )
++
++      ! ...  added for PIMD calculation
++
+       CALL mp_bcast( ierr, ionode_id, intra_image_comm )
+       !
+       CALL errore( 'create_directory:', &
+@@ -87,11 +89,11 @@ MODULE xml_io_base
+       !
+       CHARACTER(LEN=256)         :: dirname
+       INTEGER                    :: strlen
+-      CHARACTER(LEN=6), EXTERNAL :: int_to_char
++      CHARACTER(LEN=6), EXTERNAL :: int_to_char_
+       !
+       ! ... main restart directory
+       !
+-      dirname = TRIM( prefix ) // '_' // TRIM( int_to_char( runit ) )// '.save/'
++      dirname = TRIM( prefix ) // '_' // TRIM( int_to_char_( runit ) )// '.save/'
+       !
+       IF ( LEN( outdir ) > 1 ) THEN
+          !
+@@ -414,6 +416,10 @@ MODULE xml_io_base
+       USE io_global,ONLY : ionode
+       USE mp_bands, ONLY : intra_bgrp_comm, inter_bgrp_comm
+       !
++
++      ! ...  added for PIMD calculation
++      use common_variables, only : myrank_main
++
+       IMPLICIT NONE
+       !
+       INTEGER,          INTENT(IN)           :: nspin
+@@ -425,11 +431,17 @@ MODULE xml_io_base
+       CHARACTER(LEN=6)      :: ext
+       REAL(DP), ALLOCATABLE :: rhoaux(:)
+       !
++
++      ! ...  added for PIMD calculation
++      character(len=1024) :: ca
++
+       !
+       ext = ' '
+       IF ( PRESENT( extension ) ) ext = '.' // TRIM( extension )
+       !
+-      file_base = TRIM( dirname ) // 'charge-density' // TRIM( ext )
++      ! ...  added for PIMD calculation
++      write(ca,'(i0)') myrank_main
++      file_base = TRIM( dirname ) // 'charge-density_'//trim(ca)// TRIM( ext )
+       !
+       IF ( nspin == 1 ) THEN
+          !
+@@ -443,7 +455,10 @@ MODULE xml_io_base
+          !
+          CALL write_rho_xml( file_base, rhoaux, dfftp, ionode, inter_bgrp_comm )
+          !
+-         file_base = TRIM( dirname ) // 'spin-polarization' // TRIM( ext )
++
++         ! ...  added for PIMD calculation
++         write(ca,'(i0)') myrank_main
++         file_base = TRIM( dirname ) // 'spin-polarization_'//trim(ca)// TRIM( ext )
+          !
+          rhoaux(:) = rho(:,1) - rho(:,2)
+          !
+@@ -455,15 +470,24 @@ MODULE xml_io_base
+          !
+          CALL write_rho_xml( file_base, rho(:,1), dfftp, ionode, inter_bgrp_comm )
+          !
+-         file_base = TRIM( dirname ) // 'magnetization.x' // TRIM( ext )
++
++         ! ...  added for PIMD calculation
++         write(ca,'(i0)') myrank_main
++         file_base = TRIM( dirname ) // 'magnetization.x_'//trim(ca) // TRIM( ext )
+          !
+          CALL write_rho_xml( file_base, rho(:,2), dfftp, ionode, inter_bgrp_comm )
+          !
+-         file_base = TRIM( dirname ) // 'magnetization.y' // TRIM( ext )
++
++         ! ...  added for PIMD calculation
++         write(ca,'(i0)') myrank_main
++         file_base = TRIM( dirname ) // 'magnetization.y_'//trim(ca) // TRIM( ext )
+          !
+          CALL write_rho_xml( file_base, rho(:,3), dfftp, ionode, inter_bgrp_comm )
+          !
+-         file_base = TRIM( dirname ) // 'magnetization.z' // TRIM( ext )
++
++         ! ...  added for PIMD calculation
++         write(ca,'(i0)') myrank_main
++         file_base = TRIM( dirname ) // 'magnetization.z_'//trim(ca)// TRIM( ext )
+          !
+          CALL write_rho_xml( file_base, rho(:,4), dfftp, ionode, inter_bgrp_comm )
+          !
+@@ -482,6 +506,10 @@ MODULE xml_io_base
+       !
+       USE fft_base,  ONLY : dfftp
+       USE io_global, ONLY : ionode
++
++      ! ...  added for PIMD calculation
++      use common_variables, only : myrank_main
++
+       !
+       IMPLICIT NONE
+       !
+@@ -493,11 +521,19 @@ MODULE xml_io_base
+       CHARACTER(LEN=256)  :: file_base
+       CHARACTER(LEN=6)    :: ext
+       REAL(DP), ALLOCATABLE :: rhoaux(:)
++
++      ! ...  added for PIMD calculation
++      character(len=1024) :: ca
++
+       !
+       ext = ' '
+       IF ( PRESENT( extension ) ) ext = '.' // TRIM( extension )
+       !
+-      file_base = TRIM( dirname ) // 'charge-density' // TRIM( ext )
++
++      ! ...  added for PIMD calculation
++      write(ca,'(i0)') myrank_main
++      file_base = TRIM( dirname ) // 'charge-density_'//trim(ca)// TRIM( ext )
++
+       CALL read_rho_xml ( file_base, dfftp, rho(:,1) ) 
+       !
+       IF ( nspin == 2 ) THEN
+@@ -506,7 +542,10 @@ MODULE xml_io_base
+          !
+          ALLOCATE( rhoaux( dfftp%nnr ) )
+          !
+-         file_base = TRIM( dirname ) // 'spin-polarization' // TRIM( ext )
++         ! ...  added for PIMD calculation
++         write(ca,'(i0)') myrank_main
++         file_base = TRIM( dirname ) // 'spin-polarization_'//trim(ca)// TRIM( ext )
++
+          CALL read_rho_xml ( file_base, dfftp, rhoaux ) 
+          !
+          rho(:,1) = 0.5D0*( rho(:,1) + rhoaux(:) )
+@@ -516,13 +555,22 @@ MODULE xml_io_base
+          !
+       ELSE IF ( nspin == 4 ) THEN
+          !
+-         file_base = TRIM( dirname ) // 'magnetization.x' // TRIM( ext )
++         ! ...  added for PIMD calculation
++         write(ca,'(i0)') myrank_main
++         file_base = TRIM( dirname ) // 'magnetization.x_'//trim(ca)// TRIM( ext )
++
+          CALL read_rho_xml ( file_base, dfftp, rho(:,2) ) 
+          !
+-         file_base = TRIM( dirname ) // 'magnetization.y' // TRIM( ext )
++         ! ...  added for PIMD calculation
++         write(ca,'(i0)') myrank_main
++         file_base = TRIM( dirname ) // 'magnetization.y_'//trim(ca)// TRIM( ext )
++
+          CALL read_rho_xml ( file_base, dfftp, rho(:,3) ) 
+          !
+-         file_base = TRIM( dirname ) // 'magnetization.z' // TRIM( ext )
++         ! ...  added for PIMD calculation
++         write(ca,'(i0)') myrank_main
++         file_base = TRIM( dirname ) // 'magnetization.z_'//trim(ca)// TRIM( ext )
++
+          CALL read_rho_xml ( file_base, dfftp, rho(:,4) ) 
+          !
+       END IF
+diff -Nrup q-e-qe-6.2.1.original/PW/src/Makefile q-e-qe-6.2.1/PW/src/Makefile
+--- q-e-qe-6.2.1.original/PW/src/Makefile	2020-01-16 21:30:26.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/Makefile	2020-01-31 00:43:50.000000000 +0900
+@@ -6,12 +6,21 @@ include ../../make.inc
+ MODFLAGS= $(MOD_FLAG)../../iotk/src $(MOD_FLAG)../../Modules \
+           $(MOD_FLAG)../../FFTXlib $(MOD_FLAG)../../LAXlib $(MOD_FLAG)../../UtilXlib \
+           $(MOD_FLAG)../../KS_Solvers/Davidson $(MOD_FLAG)../../KS_Solvers/CG \
+-          $(MOD_FLAG)../../dft-d3/
++          $(MOD_FLAG)../../dft-d3/ $(MOD_FLAG)CMAKEBUILDDIR
+ 
+ PWOBJS = \
+ pwscf.o 
+ 
++PWINTFOBJS = \
++qe_interface.o \
++qe_init0.o \
++qe_init1.o \
++qe_electrons0.o \
++qe_force0.o \
++qe_wavefunction0.o
++
+ PWLIBS = \
++pwcom.o \
+ a2fmod.o \
+ add_bfield.o \
+ add_efield.o \
+@@ -128,6 +137,7 @@ martyna_tuckerman.o \
+ memory_report.o \
+ mix_rho.o \
+ move_ions.o \
++move_ions2.o \
+ multable.o \
+ n_plane_waves.o \
+ new_ns.o \
+@@ -166,7 +176,6 @@ pw_restart.o \
+ pw_restart_new.o \
+ add_qexsd_step.o \
+ pw_init_qexsd_input.o \
+-pwcom.o \
+ pw2blip.o \
+ pw2casino.o \
+ pw2casino_write.o \
+@@ -251,7 +260,50 @@ QEMODS=../../Modules/libqemod.a ../../KS
+ 
+ TLDEPS=bindir mods libs liblapack libblas dftd3
+ 
+-all : tldeps pw.x generate_vdW_kernel_table.x generate_rVV10_kernel_table.x
++default : libqepw.a
++
++all : tldeps libqepw.a generate_vdW_kernel_table.x generate_rVV10_kernel_table.x
++
++libqepw.a : $(PWOBJS) $(PWLIBS) $(PWINTFOBJS)
++	$(AR) $(ARFLAGS) $@ \
++	$(PWOBJS) $(PWINTFOBJS) $(PWLIBS) $?
++	$(RANLIB) $@
++	- ( cd ../../ ; mkdir -p qelib ; \
++	    cd ./qelib ; \
++	    cp -p ../PW/src/$@ . ; \
++            cp -p ../Modules/libqemod.a . ; \
++	    cp -p ../KS_Solvers/Davidson/libdavid.a ./libqedavid.a ; \
++	    cp -p ../KS_Solvers/CG/libcg.a ./libqecg.a ; \
++	    cp -p ../FFTXlib/libqefft.a . ; \
++	    cp -p ../LAXlib/libqela.a . ; \
++	    cp -p ../UtilXlib/libutil.a ./libqeutil.a ; \
++	    cp -p ../dft-d3/libdftd3qe.a ./libqedftd3qe.a ; \
++	    cp -p ../clib/clib.a ./libqec.a ; \
++	    cp -p ../iotk/src/libiotk.a ./libqeiotk.a ;  \
++	    cp -p ../FoX/lib/libFoX_dom.a ./libqeFoX_dom.a ; \
++	    cp -p ../FoX/lib/libFoX_sax.a ./libqeFoX_sax.a ; \
++	    cp -p ../FoX/lib/libFoX_wxml.a ./libqeFoX_wxml.a ; \
++	    cp -p ../FoX/lib/libFoX_common.a ./libqeFoX_common.a ; \
++	    cp -p ../FoX/lib/libFoX_utils.a ./libqeFoX_utils.a ; \
++	    cp -p ../FoX/lib/libFoX_fsys.a ./libqeFoX_fsys.a ; \
++	    ar -x ./libqeFoX_common.a ; \
++	    ar -x ./libqeFoX_dom.a ; \
++	    ar -x ./libqeFoX_fsys.a ; \
++	    ar -x ./libqeFoX_sax.a ; \
++	    ar -x ./libqeFoX_utils.a ; \
++	    ar -x ./libqeFoX_wxml.a ; \
++	    ar -x ./libqec.a ; \
++	    ar -x ./libqecg.a ; \
++	    ar -x ./libqedavid.a ; \
++	    ar -x ./libqedftd3qe.a ; \
++	    ar -x ./libqefft.a ; \
++	    ar -x ./libqeiotk.a ; \
++	    ar -x ./libqela.a ; \
++	    ar -x ./libqemod.a ; \
++	    ar -x ./libqepw.a ; \
++	    ar -x ./libqeutil.a ; \
++	    ar ruv ./libqe.a *.o ; \
++	    \rm ./*.o ;  )
+ 
+ pw.x : $(PWOBJS) libpw.a $(LIBOBJS) $(QEMODS)
+ 	$(LD) $(LDFLAGS) -o $@ \
+@@ -281,7 +333,6 @@ generate_rVV10_kernel_table.x : libpw.a
+ 		generate_rVV10_kernel_table.o $(QEMODS) libpw.a $(LIBOBJS) $(LIBS)
+ 	- ( cd ../../bin; ln -fs ../PW/src/$@ . )
+ 
+-
+ include make.depend
+ 
+ # DO NOT DELETE
+diff -Nrup q-e-qe-6.2.1.original/PW/src/c_bands.f90 q-e-qe-6.2.1/PW/src/c_bands.f90
+--- q-e-qe-6.2.1.original/PW/src/c_bands.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/c_bands.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -31,6 +31,10 @@ SUBROUTINE c_bands( iter )
+   USE mp_pools,             ONLY : npool, kunit, inter_pool_comm
+   USE mp,                   ONLY : mp_sum
+   USE check_stop,           ONLY : check_stop_now
++
++  ! ...  added for PIMD calculation
++  use qe_variables,      only : flag_no_output
++
+   !
+   IMPLICIT NONE
+   !
+@@ -63,8 +67,10 @@ SUBROUTINE c_bands( iter )
+   END DO
+   !
+   IF ( isolve == 0 ) THEN
++     if(.not.flag_no_output)   &
+      WRITE( stdout, '(5X,"Davidson diagonalization with overlap")' )
+   ELSE IF ( isolve == 1 ) THEN
++     if(.not.flag_no_output)   &
+      WRITE( stdout, '(5X,"CG style diagonalization")')
+   ELSE
+      CALL errore ( 'c_bands', 'invalid type of diagonalization', isolve)
+@@ -123,6 +129,7 @@ SUBROUTINE c_bands( iter )
+   CALL mp_sum( avg_iter, inter_pool_comm )
+   avg_iter = avg_iter / nkstot
+   !
++  if(.not.flag_no_output)   &
+   WRITE( stdout, &
+        '( 5X,"ethr = ",1PE9.2,",  avg # of iterations =",0PF5.1 )' ) &
+        ethr, avg_iter
+@@ -172,6 +179,10 @@ SUBROUTINE diag_bands( iter, ik, avg_ite
+   USE mp_bands,             ONLY : nproc_bgrp, intra_bgrp_comm, inter_bgrp_comm, &
+                                    set_bgrp_indices, my_bgrp_id, nbgrp
+   USE mp,                   ONLY : mp_sum, mp_bcast
++
++  ! ...  added for PIMD calculation
++  use qe_variables,      only : flag_no_output
++
+   !
+   IMPLICIT NONE
+   !
+@@ -243,6 +254,7 @@ SUBROUTINE diag_bands( iter, ik, avg_ite
+      !
+   ELSE IF ( notconv > 0 ) THEN
+      !
++     if(.not.flag_no_output)   &
+      WRITE( stdout, '(5X,"c_bands: ",I2, &
+                &   " eigenvalues not converged")' ) notconv
+      !
+@@ -602,6 +614,10 @@ SUBROUTINE c_bands_nscf( )
+   USE mp,                   ONLY : mp_sum
+   USE check_stop,           ONLY : check_stop_now
+   !
++  ! ...  added for PIMD calculation
++  use qe_variables,      only : flag_no_output
++
++  !
+   IMPLICIT NONE
+   !
+   REAL(DP) :: avg_iter, ethr_
+@@ -626,8 +642,10 @@ SUBROUTINE c_bands_nscf( )
+   END DO
+   !
+   IF ( isolve == 0 ) THEN
++     if(.not.flag_no_output)   &
+      WRITE( stdout, '(5X,"Davidson diagonalization with overlap")' )
+   ELSE IF ( isolve == 1 ) THEN
++     if(.not.flag_no_output)   &
+      WRITE( stdout, '(5X,"CG style diagonalization")')
+   ELSE
+      CALL errore ( 'c_bands', 'invalid type of diagonalization', isolve)
+@@ -655,7 +673,9 @@ SUBROUTINE c_bands_nscf( )
+      !
+      ! ... calculate starting  wavefunctions
+      !
++     if(.not.flag_no_output) then
+      IF ( iverbosity > 0 ) WRITE( stdout, 9001 ) ik
++     end if
+      !
+      IF ( TRIM(starting_wfc) == 'file' ) THEN
+         !
+@@ -694,6 +714,7 @@ SUBROUTINE c_bands_nscf( )
+      ! report about timing
+      !
+      IF ( iverbosity > 0 ) THEN
++        if(.not.flag_no_output) &
+         WRITE( stdout, 9000 ) get_clock( 'PWSCF' )
+         FLUSH( stdout )
+      ENDIF
+@@ -703,6 +724,7 @@ SUBROUTINE c_bands_nscf( )
+   CALL mp_sum( avg_iter, inter_pool_comm )
+   avg_iter = avg_iter / nkstot
+   !
++  if(.not.flag_no_output) &
+   WRITE( stdout, '(/,5X,"ethr = ",1PE9.2,",  avg # of iterations =",0PF5.1)' ) &
+        ethr, avg_iter
+   !
+diff -Nrup q-e-qe-6.2.1.original/PW/src/electrons.f90 q-e-qe-6.2.1/PW/src/electrons.f90
+--- q-e-qe-6.2.1.original/PW/src/electrons.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/electrons.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -51,6 +51,8 @@ SUBROUTINE electrons()
+   USE ions_base,            ONLY : nat
+   USE loc_scdm,             ONLY : use_scdm, localize_orbitals
+   !
++  ! ...  added for PIMD calculation
++  use qe_variables,      only : flag_no_output
+   !
+   IMPLICIT NONE
+   !
+@@ -270,6 +272,7 @@ SUBROUTINE electrons()
+         !
+         IF ( dexx < tr2_final ) THEN
+            IF ( do_makov_payne ) CALL makov_payne( etot )
++           if(.not.flag_no_output)   &
+            WRITE( stdout, 9101 )
+            RETURN
+         END IF
+@@ -298,6 +301,7 @@ SUBROUTINE electrons()
+      !
+   END DO
+   !
++  if(.not.flag_no_output)   &
+   WRITE( stdout, 9120 ) iter
+   FLUSH( stdout )
+   !
+@@ -393,6 +397,15 @@ SUBROUTINE electrons_scf ( printout, exx
+   USE wrappers,             ONLY : memstat
+   !
+   USE plugin_variables,     ONLY : plugin_etot
++
++  ! ...  added for PIMD calculation
++  use qe_variables,      only : flag_no_output
++
++  use common_variables, only :                         &
++        nprocs_sub, mpi_group_sub, mpi_group_world,    &
++        myrank, mpi_comm_sub, myrank_sub,              &
++        nprocs_main, myrank_main
++
+   !
+   IMPLICIT NONE
+   !
+@@ -434,14 +447,23 @@ SUBROUTINE electrons_scf ( printout, exx
+   REAL(DP) :: latvecs(3,3)
+   INTEGER:: atnum(1:nat), na
+   !
++
++  ! ...  added for PIMD calculation
++  character(len=1024) :: ca
++
++  !
+   iter = 0
+   dr2  = 0.0_dp
+   IF ( restart ) CALL restart_in_electrons (iter, dr2, ethr, et )
+   !
++  if(.not.flag_no_output)   &
+   WRITE( stdout, 9000 ) get_clock( 'PWSCF' )
+   !
+   CALL memstat( kilobytes )
++  !
++  if(.not.flag_no_output)   then
+   IF ( kilobytes > 0 ) WRITE( stdout, 9001 ) kilobytes/1000.0
++  end if
+   !
+   CALL start_clock( 'electrons' )
+   !
+@@ -480,10 +502,18 @@ SUBROUTINE electrons_scf ( printout, exx
+   !
+   call create_scf_type ( rhoin )
+   !
++  if(.not.flag_no_output)   &
+   WRITE( stdout, 9002 )
+   FLUSH( stdout )
+   !
+-  CALL open_mix_file( iunmix, 'mix', exst )
++
++  ! ...  added for PIMD calculation
++  iunmix = iunmix + myrank_main 
++  write(ca,'(i0)') myrank_main
++!!!  CALL open_mix_file( iunmix, 'mix', exst )
++  CALL open_mix_file( iunmix, 'mix'//trim(ca)//'_', exst )
++
++
+   !
+   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   !%%%%%%%%%%%%%%%%%%%%          iterate !          %%%%%%%%%%%%%%%%%%%%%
+@@ -498,6 +528,7 @@ SUBROUTINE electrons_scf ( printout, exx
+      END IF
+      iter = iter + 1
+      !
++     if(.not.flag_no_output)   &
+      WRITE( stdout, 9010 ) iter, ecutwfc, mixing_beta
+      !
+      FLUSH( stdout )
+@@ -575,8 +606,10 @@ SUBROUTINE electrons_scf ( printout, exx
+            !
+            IF ( iverbosity > 0 .OR. first ) THEN
+               IF (noncolin) THEN
++                 if(.not.flag_no_output) &
+                  CALL write_ns_nc()
+               ELSE
++                 if(.not.flag_no_output) &
+                  CALL write_ns()
+               ENDIF
+            ENDIF
+@@ -590,6 +623,7 @@ SUBROUTINE electrons_scf ( printout, exx
+               ENDIF
+            END IF
+            IF ( iter <= niter_with_fixed_ns ) THEN
++              if(.not.flag_no_output) &
+               WRITE( stdout, '(/,5X,"RESET ns to initial values (iter <= mixing_fixed_ns)",/)')
+               IF (noncolin) THEN
+                  rho%ns_nc = rhoin%ns_nc
+@@ -620,6 +654,7 @@ SUBROUTINE electrons_scf ( printout, exx
+         ! ... contains a hidden parallelization level on the entire image
+         !
+         ! IF ( my_pool_id == root_pool ) 
++
+         CALL mix_rho ( rho, rhoin, mixing_beta, dr2, tr2_min, iter, nmix, &
+                        iunmix, conv_elec )
+         CALL bcast_scf_type ( rhoin, root_pool, inter_pool_comm )
+@@ -645,6 +680,7 @@ SUBROUTINE electrons_scf ( printout, exx
+            !
+            IF ( dr2 < tr2_min ) THEN
+               !
++              if(.not.flag_no_output) &
+               WRITE( stdout, '(/,5X,"Threshold (ethr) on eigenvalues was ", &
+                                &    "too large:",/,5X,                      &
+                                & "Diagonalizing with lowered threshold",/)' )
+@@ -739,9 +775,12 @@ SUBROUTINE electrons_scf ( printout, exx
+         !
+      END IF
+      !
++     if(.not.flag_no_output)   &
+      WRITE( stdout, 9000 ) get_clock( 'PWSCF' )
+      !
++     if(.not.flag_no_output) then
+      IF ( conv_elec ) WRITE( stdout, 9101 )
++     end if
+ !  these values are assigned to global variables  because these information are needed for XML  printout 
+ !  P.D. 
+      IF ( conv_elec ) THEN 
+@@ -750,6 +789,7 @@ SUBROUTINE electrons_scf ( printout, exx
+      END IF  
+ 
+      !
++     if(.not.flag_no_output) then
+      IF ( conv_elec .OR. MOD( iter, iprint ) == 0 ) THEN
+         !
+         IF ( lda_plus_U .AND. iverbosity == 0 ) THEN
+@@ -762,6 +802,7 @@ SUBROUTINE electrons_scf ( printout, exx
+         CALL print_ks_energies()
+         !
+      END IF
++     end if
+      !
+      IF ( ABS( charge - nelec ) / charge > 1.D-7 ) THEN
+         WRITE( stdout, 9050 ) charge, nelec
+@@ -832,6 +873,7 @@ SUBROUTINE electrons_scf ( printout, exx
+      !
+      etot = etot + plugin_etot 
+      !
++     if(.not.flag_no_output)   &
+      CALL print_energies ( printout )
+      !
+      IF ( conv_elec ) THEN
+@@ -843,8 +885,13 @@ SUBROUTINE electrons_scf ( printout, exx
+         !
+         ! ... print out ESM potentials if desired
+         !
++        if(.not.flag_no_output)   then
++        !
+         IF ( do_comp_esm ) CALL esm_printpot( rho%of_g )
+         !
++        end if
++        ! 
++!temporary!        if(.not.flag_no_output)   &
+         WRITE( stdout, 9110 ) iter
+         !
+         ! ... jump to the end
+@@ -866,7 +913,9 @@ SUBROUTINE electrons_scf ( printout, exx
+      !
+   END DO
+   !
++  if(.not.flag_no_output)   &
+   WRITE( stdout, 9101 )
++!temporary!  if(.not.flag_no_output)   &
+   WRITE( stdout, 9120 ) iter
+   !
+ 10  FLUSH( stdout )
+diff -Nrup q-e-qe-6.2.1.original/PW/src/exx.f90 q-e-qe-6.2.1/PW/src/exx.f90
+--- q-e-qe-6.2.1.original/PW/src/exx.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/exx.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -448,7 +448,7 @@ MODULE exx
+     LOGICAL      :: xk_not_found
+     REAL(DP)     :: sxk(3), dxk(3), xk_cryst(3)
+     REAL(DP)     :: dq1, dq2, dq3
+-    CHARACTER (len=6), EXTERNAL :: int_to_char
++    CHARACTER (len=6), EXTERNAL :: int_to_char_
+     !
+     CALL start_clock ('exx_grid')
+     !
+@@ -605,7 +605,7 @@ MODULE exx
+     CALL cryst_to_cart(nkqs, xkq_collect, bg, +1)
+ 
+     IF( nkqs > 1) THEN
+-      WRITE(stdout, '(5x,3a)') "EXX: setup a grid of "//trim(int_to_char(nkqs))&
++      WRITE(stdout, '(5x,3a)') "EXX: setup a grid of "//trim(int_to_char_(nkqs))&
+                            //" q-points centered on each k-point"
+       IF ( nkqs < 100 .OR. iverbosity > 0 ) THEN
+           WRITE( stdout, '(5x,a)' ) '(k+q)-points:'
+@@ -3782,12 +3782,18 @@ END SUBROUTINE compute_becpsi
+     USE buffers,              ONLY : open_buffer, get_buffer, save_buffer
+     USE mp_exx,               ONLY : max_ibands
+     !
++    ! ...  added for PIMD calculation
++    use common_variables, only : myrank_main
+     !
+     IMPLICIT NONE
+     !
+     INTEGER, intent(in) :: type
+     INTEGER :: lda, n, ik
+     LOGICAL :: exst_mem, exst_file
++
++    ! ...  added for PIMD calculation
++    character(len=1024) :: ca
++
+     !
+     IF (negrp.eq.1) THEN
+        !
+@@ -3852,8 +3858,15 @@ END SUBROUTINE compute_becpsi
+        ! ... io_level > 1 : open file, otherwise: open buffer
+        !
+        nwordwfc_exx  = size(evc_exx)
+-       CALL open_buffer( iunwfc_exx, 'wfc_exx', nwordwfc_exx, io_level, &
++
++       ! ...  added for PIMD calculation
++       iunwfc_exx = iunwfc_exx + myrank_main 
++       write(ca,'(i0)') myrank_main
++!!!       CALL open_buffer( iunwfc_exx, 'wfc_exx', nwordwfc_exx, io_level, &
++!!!            exst_mem, exst_file )
++       CALL open_buffer( iunwfc_exx, 'wfc_exx'//trim(ca)//'_', nwordwfc_exx, io_level, &
+             exst_mem, exst_file )
++
+     END IF
+     !
+     DO ik=1, nks
+diff -Nrup q-e-qe-6.2.1.original/PW/src/forces.f90 q-e-qe-6.2.1/PW/src/forces.f90
+--- q-e-qe-6.2.1.original/PW/src/forces.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/forces.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -58,6 +58,10 @@ SUBROUTINE forces()
+   USE esm,           ONLY : do_comp_esm, esm_bc, esm_force_ew
+   USE qmmm,          ONLY : qmmm_mode
+   !
++
++  ! ...  added for PIMD calculation
++  use qe_variables,      only : flag_no_output
++
+   IMPLICIT NONE
+   !
+   REAL(DP), ALLOCATABLE :: forcenl(:,:), &
+@@ -264,16 +268,20 @@ SUBROUTINE forces()
+   !
+   ! ... write on output the forces
+   !
++  if(.not.flag_no_output) then
+   WRITE( stdout, '(/,5x,"Forces acting on atoms (cartesian axes, Ry/au):", / )')
+   DO na = 1, nat
+      WRITE( stdout, 9035) na, ityp(na), force(:,na)
+   END DO
++  end if
+   !
+   ! ... forces on fixed coordinates are set to zero ( C.S. 15/10/2003 )
+   !
+   force(:,:)    = force(:,:)    * DBLE( if_pos )
+   forcescc(:,:) = forcescc(:,:) * DBLE( if_pos )
+   !
++  if(.not.flag_no_output) then  !!!
++  !
+   IF ( iverbosity > 0 ) THEN
+      IF ( do_comp_mt ) THEN
+         WRITE( stdout, '(5x,"The Martyna-Tuckerman correction term to forces")')
+@@ -345,6 +353,8 @@ SUBROUTINE forces()
+      !
+   END IF
+   !
++  end if !!! 
++  !
+   sumfor = 0.D0
+   sumscf = 0.D0
+   !
+@@ -358,6 +368,7 @@ SUBROUTINE forces()
+   sumfor = SQRT( sumfor )
+   sumscf = SQRT( sumscf )
+   !
++  if(.not.flag_no_output)    &
+   WRITE( stdout, '(/5x,"Total force = ",F12.6,5X, &
+               &  "Total SCF correction = ",F12.6)') sumfor, sumscf
+   !
+@@ -369,6 +380,7 @@ SUBROUTINE forces()
+                  force_disp(1,na)**2 + force_disp(2,na)**2 + force_disp(3,na)**2
+      END DO
+      sum_mm = SQRT( sum_mm )
++     if(.not.flag_no_output)    &
+      WRITE ( stdout, '(/,5x, "Total Dispersion Force = ",F12.6)') sum_mm
+      !
+   END IF
+@@ -381,6 +393,7 @@ SUBROUTINE forces()
+                  force_d3(1,na)**2 + force_d3(2,na)**2 + force_d3(3,na)**2
+      END DO
+      sum_mm = SQRT( sum_mm )
++     if(.not.flag_no_output)    &
+      WRITE ( stdout, '(/,5x, "DFT-D3 dispersion Force = ",F12.6)') sum_mm
+      !
+   END IF
+@@ -393,6 +406,7 @@ SUBROUTINE forces()
+                  force_disp_xdm(1,na)**2 + force_disp_xdm(2,na)**2 + force_disp_xdm(3,na)**2
+      END DO
+      sum_mm = SQRT( sum_mm )
++     if(.not.flag_no_output)    &
+      WRITE ( stdout, '(/,5x, "Total XDM Force = ",F12.6)') sum_mm
+      !
+   END IF
+@@ -407,9 +421,11 @@ SUBROUTINE forces()
+   !
+   CALL stop_clock( 'forces' )
+   !
++  if(.not.flag_no_output) then
+   IF ( ( sumfor < 10.D0*sumscf ) .AND. ( sumfor > nat*eps ) ) &
+   WRITE( stdout,'(5x,"SCF correction compared to forces is large: ", &
+                    &  "reduce conv_thr to get better values")')
++  end if
+   !
+   IF(ALLOCATED(force_mt))   DEALLOCATE( force_mt )
+ 
+diff -Nrup q-e-qe-6.2.1.original/PW/src/input.f90 q-e-qe-6.2.1/PW/src/input.f90
+--- q-e-qe-6.2.1.original/PW/src/input.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/input.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -150,7 +150,7 @@ SUBROUTINE iosys()
+   !
+   USE relax,         ONLY : epse, epsf, epsp, starting_scf_threshold
+   !
+-  USE extrapolation, ONLY : pot_order, wfc_order
++  USE extrapolation, ONLY : pot_order, wfc_order, pot_2tx, wfc_2tx
+   USE control_flags, ONLY : isolve, max_cg_iter, david, tr2, imix, gamma_only,&
+                             nmix, iverbosity, smallmem, niter, &
+                             io_level, ethr, lscf, lbfgs, lmd, &
+@@ -975,7 +975,8 @@ SUBROUTINE iosys()
+      !
+      pot_order = 0
+      !
+-  CASE( 'first_order', 'first-order', 'first order' )
++  CASE( 'first_order', 'first-order', 'first order', &
++        'first_order_tx', 'first-order-tx', 'first order tx' )
+      !
+      IF ( lmd  ) THEN
+         pot_order = 2
+@@ -984,7 +985,8 @@ SUBROUTINE iosys()
+                      "' not available, using 'atomic'")
+      ENDIF
+      !
+-  CASE( 'second_order', 'second-order', 'second order' )
++  CASE( 'second_order', 'second-order', 'second order', &
++        'second_order_gx', 'second-order-gx', 'second order gx' )
+      !
+      IF ( lmd  ) THEN
+         pot_order = 3
+@@ -993,6 +995,39 @@ SUBROUTINE iosys()
+                      "' not available, using 'atomic'")
+      ENDIF
+      !
++  !! ... For 2nd order tx extrapolation
++  CASE( 'second_order_tx', 'second-order-tx', 'second order tx' )
++     !
++     IF ( lmd  ) THEN
++        pot_order = 3
++        pot_2tx = 1
++     ELSE
++        CALL infomsg('iosys', "pot_extrapolation='"//trim(pot_extrapolation)//&
++                     "' not available, using 'atomic'")
++     ENDIF
++     !
++  !! ... For 3rd,4th order extrapolation
++  CASE( 'third_order', 'third-order', 'third order', &
++        'third_order_tx', 'third-order-tx', 'third order tx' )
++     !
++     IF ( lmd  ) THEN
++        pot_order = 4
++     ELSE
++        CALL infomsg('iosys', "pot_extrapolation='"//trim(pot_extrapolation)//&
++                     "' not available, using 'atomic'")
++     ENDIF
++     !
++  CASE( 'fourth_order', 'fourth-order', 'fourth order', &
++        'fourth_order_tx', 'fourth-order-tx', 'fourth order tx' )
++     !
++     IF ( lmd  ) THEN
++        pot_order = 5
++     ELSE
++        CALL infomsg('iosys', "pot_extrapolation='"//trim(pot_extrapolation)//&
++                     "' not available, using 'atomic'")
++     ENDIF
++  !!
++     !
+   CASE DEFAULT
+      !
+      pot_order = 1
+@@ -1002,7 +1037,8 @@ SUBROUTINE iosys()
+   wfc_order = 0
+   SELECT CASE( trim( wfc_extrapolation ) )
+      !
+-  CASE( 'first_order', 'first-order', 'first order' )
++  CASE( 'first_order', 'first-order', 'first order', &
++        'first_order_tx', 'first-order-tx', 'first order tx' )
+      !
+      IF ( lmd  ) THEN
+         wfc_order = 2
+@@ -1011,7 +1047,8 @@ SUBROUTINE iosys()
+                      "' not available, using 'atomic'")
+      ENDIF
+      !
+-  CASE( 'second_order', 'second-order', 'second order' )
++  CASE( 'second_order', 'second-order', 'second order', &
++        'second_order_gx', 'second-order-gx', 'second order gx' )
+      !
+      IF ( lmd  ) THEN
+         wfc_order = 3
+@@ -1020,6 +1057,39 @@ SUBROUTINE iosys()
+                      "' not available, using 'atomic'")
+      ENDIF
+      !
++  !! ... For 2nd order tx extrapolation
++  CASE( 'second_order_tx', 'second-order-tx', 'second order tx' )
++     !
++     IF ( lmd  ) THEN
++        wfc_order = 3
++        wfc_2tx = 1
++     ELSE
++        CALL infomsg('iosys', "wfc_extrapolation='"//trim(pot_extrapolation)//&
++                     "' not available, using 'atomic'")
++     ENDIF
++     !
++  !! ... For 3rd,4th order extrapolation
++  CASE( 'third_order', 'third-order', 'third order', &
++        'third_order_tx', 'third-order-tx', 'third order tx' )
++     !
++     IF ( lmd  ) THEN
++        wfc_order = 4
++     ELSE
++        CALL infomsg('iosys', "wfc_extrapolation='"//trim(pot_extrapolation)//&
++                     "' not available, using 'atomic'")
++     ENDIF
++     !
++  CASE( 'fourth_order', 'fourth-order', 'fourth order', &
++        'fourth_order_tx', 'fourth-order-tx', 'fourth order tx' )
++     !
++     IF ( lmd  ) THEN
++        wfc_order = 5
++     ELSE
++        CALL infomsg('iosys', "wfc_extrapolation='"//trim(pot_extrapolation)//&
++                     "' not available, using 'atomic'")
++     ENDIF
++     !
++  !!
+   END SELECT
+   !
+   SELECT CASE( trim( ion_temperature ) )
+diff -Nrup q-e-qe-6.2.1.original/PW/src/manypw.f90 q-e-qe-6.2.1/PW/src/manypw.f90
+--- q-e-qe-6.2.1.original/PW/src/manypw.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/manypw.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -38,7 +38,7 @@ SUBROUTINE run_manypw ( )
+   LOGICAL :: opnd
+   CHARACTER(LEN=256) :: filin, filout
+   CHARACTER(LEN=7) :: image_label, var_first_index
+-  CHARACTER(LEN=6), EXTERNAL :: int_to_char
++  CHARACTER(LEN=6), EXTERNAL :: int_to_char_
+   !
+   !
+   CALL get_environment_variable( 'FIRST_IMAGE_INDEX', var_first_index )
+@@ -48,7 +48,7 @@ SUBROUTINE run_manypw ( )
+   !
+   ! ... Image-specific input files
+   !
+-  image_label = '_' // int_to_char(my_image_id+first_image)
++  image_label = '_' // int_to_char_(my_image_id+first_image)
+   IF ( TRIM (input_file_) == ' ') THEN
+      filin = 'pw' // TRIM(image_label)  // '.in'
+   ELSE
+diff -Nrup q-e-qe-6.2.1.original/PW/src/mix_rho.f90 q-e-qe-6.2.1/PW/src/mix_rho.f90
+--- q-e-qe-6.2.1.original/PW/src/mix_rho.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/mix_rho.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -187,6 +187,7 @@ SUBROUTINE mix_rho( input_rhout, rhoin,
+   !
+   ipos = mixrho_iter - 1 - ( ( mixrho_iter - 2 ) / n_iter ) * n_iter
+   !
++
+   IF ( mixrho_iter > 1 ) THEN
+      !
+      CALL davcio_mix_type( df(ipos), iunmix, 1, read_ )
+diff -Nrup q-e-qe-6.2.1.original/PW/src/move_ions2.f90 q-e-qe-6.2.1/PW/src/move_ions2.f90
+--- q-e-qe-6.2.1.original/PW/src/move_ions2.f90	1970-01-01 09:00:00.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/move_ions2.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -0,0 +1,89 @@
++!
++! Copyright (C) 2002-2017 Quantum ESPRESSO group
++! This file is distributed under the terms of the
++! GNU General Public License. See the file `License'
++! in the root directory of the present distribution,
++! or http://www.gnu.org/copyleft/gpl.txt .
++!
++!----------------------------------------------------------------------------
++SUBROUTINE move_ions2 ( idone )
++  !----------------------------------------------------------------------------
++  !
++  ! ... Perform an ionic step, according to the requested scheme:
++  ! ...    lbfgs               bfgs minimizations
++  ! ...    lmd                 molecular dynamics ( all kinds )
++  ! ... Additional variables affecting the calculation:
++  ! ...    lmovecell           Variable-cell calculation
++  ! ...    calc                Type of MD
++  ! ...    lconstrain          constrained MD
++  ! ..  "idone" is the counter on ionic moves, "nstep" their total number 
++  ! ... "istep" contains the number of all steps including previous runs
++  ! ... Coefficients for potential and wavefunctions extrapolation are
++  ! ... no longer computed here but in update_pot
++  !
++  USE constants,              ONLY : e2, eps6, ry_kbar
++  USE io_global,              ONLY : stdout
++  USE io_files,               ONLY : tmp_dir
++  USE kinds,                  ONLY : DP
++  USE cell_base,              ONLY : alat, at, bg, omega, cell_force, &
++                                     fix_volume, fix_area
++  USE cellmd,                 ONLY : omega_old, at_old, press, lmovecell, calc
++  USE ions_base,              ONLY : nat, ityp, zv, tau, if_pos
++  USE fft_base,               ONLY : dfftp
++  USE fft_base,               ONLY : dffts
++  USE fft_types,              ONLY : fft_type_allocate
++  USE gvect,                  ONLY : gcutm
++  USE gvecs,                  ONLY : gcutms
++  USE symm_base,              ONLY : checkallsym
++  USE ener,                   ONLY : etot, ef
++  USE force_mod,              ONLY : force, sigma
++  USE control_flags,          ONLY : istep, nstep, upscale, lbfgs, &
++                                     lconstrain, conv_ions, lmd, tr2
++  USE basis,                  ONLY : starting_wfc
++  USE relax,                  ONLY : epse, epsf, epsp, starting_scf_threshold
++  USE lsda_mod,               ONLY : lsda, absmag
++  USE mp_images,              ONLY : intra_image_comm
++  USE mp_bands,               ONLY : intra_bgrp_comm, nyfft
++  USE io_global,              ONLY : ionode_id, ionode
++  USE mp,                     ONLY : mp_bcast
++  USE bfgs_module,            ONLY : bfgs, terminate_bfgs
++  USE basic_algebra_routines, ONLY : norm
++  USE dynamics_module,        ONLY : verlet, terminate_verlet, proj_verlet
++  USE dynamics_module,        ONLY : smart_MC, langevin_md
++  USE fcp                ,    ONLY : fcp_verlet, fcp_line_minimisation, &
++                                     fcp_mdiis_update, fcp_mdiis_end
++  USE fcp_variables,          ONLY : lfcpopt, lfcpdyn, fcp_mu, &
++                                     fcp_relax, fcp_relax_crit
++  USE klist,                  ONLY : nelec
++  USE dfunct,                 only : newd
++  !
++  IMPLICIT NONE
++  !
++  INTEGER,  INTENT(IN) :: idone
++  !
++  LOGICAL, SAVE         :: lcheck_mag = .TRUE., &
++                           restart_with_starting_magnetiz = .FALSE., &
++                           lcheck_cell= .TRUE., &
++                           final_cell_calculation=.FALSE.
++  REAL(DP)              :: energy_error, gradient_error, cell_error
++  LOGICAL               :: step_accepted, exst
++  REAL(DP), ALLOCATABLE :: pos(:), grad(:)
++  REAL(DP)              :: h(3,3), fcell(3,3)=0.d0, epsp1
++  INTEGER,  ALLOCATABLE :: fixion(:)
++  LOGICAL               :: conv_fcp
++  !
++  !
++  CALL recips( at(1,1),at(1,2),at(1,3), bg(1,1),bg(1,2),bg(1,3) )
++  !
++  CALL clean_pw( .FALSE. )
++  CALL close_files(.TRUE.)
++  lmovecell=.FALSE.
++  !
++  if (trim(starting_wfc) == 'file') starting_wfc = 'atomic+random'
++  !
++  CALL init_run()
++  !
++  RETURN
++  !
++END SUBROUTINE move_ions2
++!
+diff -Nrup q-e-qe-6.2.1.original/PW/src/potinit.f90 q-e-qe-6.2.1/PW/src/potinit.f90
+--- q-e-qe-6.2.1.original/PW/src/potinit.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/potinit.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -61,6 +61,10 @@ SUBROUTINE potinit()
+   USE paw_variables,        ONLY : okpaw, ddd_PAW
+   USE paw_init,             ONLY : PAW_atomic_becsum
+   USE paw_onecenter,        ONLY : PAW_potential
++
++  ! ...  added for PIMD calculation
++  use common_variables, only : myrank_main
++
+   !
+   IMPLICIT NONE
+   !
+@@ -70,14 +74,24 @@ SUBROUTINE potinit()
+   INTEGER               :: is
+   LOGICAL               :: exst 
+   CHARACTER(LEN=256)    :: dirname, filename
++
++  ! ...  added for PIMD calculation
++  character(len=1024) :: ca
++
+   !
+   CALL start_clock('potinit')
+   !
+   dirname = TRIM(tmp_dir) // TRIM (prefix) // '.save/'
+ #if defined __HDF5
+-  filename = TRIM(dirname) // 'charge-density.hdf5'
++  ! ...  added for PIMD calculation
++  write(ca,'(i0)') myrank_main
++!!!  filename = TRIM(dirname) // 'charge-density.hdf5'
++  filename = TRIM(dirname) // 'charge-density_'//trim(ca)//'.hdf5'
+ #else 
+-  filename = TRIM(dirname) // 'charge-density.dat'
++  ! ...  added for PIMD calculation
++  write(ca,'(i0)') myrank_main
++!!!  filename = TRIM(dirname) // 'charge-density.dat'
++  filename = TRIM(dirname) // 'charge-density_'//trim(ca)//'.dat'
+ #endif
+   exst     =  check_file_exst( TRIM(filename) )
+   !
+diff -Nrup q-e-qe-6.2.1.original/PW/src/punch.f90 q-e-qe-6.2.1/PW/src/punch.f90
+--- q-e-qe-6.2.1.original/PW/src/punch.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/punch.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -34,6 +34,10 @@ SUBROUTINE punch( what )
+   USE io_rho_xml,           ONLY : write_scf
+   USE a2F,                  ONLY : la2F, a2Fsave
+   USE wavefunctions_module, ONLY : evc
++
++  ! ...  added for PIMD calculation
++  use common_variables, only : myrank_main
++
+   !
+   IMPLICIT NONE
+   !
+@@ -42,6 +46,9 @@ SUBROUTINE punch( what )
+   CHARACTER(LEN=320) :: cp_source, cp_dest
+   INTEGER            :: cp_status, nt, inlc
+   !
++  ! ...  added for PIMD calculation
++  character(len=1024) :: ca
++
+   !
+   IF (io_level < 0 ) RETURN
+   !
+@@ -52,7 +59,15 @@ SUBROUTINE punch( what )
+   ! ... save here wavefunctions to file if never saved before
+   !
+   IF ( .NOT. twfcollect .AND. nks == 1 ) THEN
+-     IF (io_level < 1) CALL diropn( iunwfc, 'wfc', 2*nwordwfc, exst )
++
++     ! ...  added for PIMD calculation
++!!!     IF (io_level < 1) CALL diropn( iunwfc, 'wfc', 2*nwordwfc, exst )
++     IF (io_level < 1) THEN
++       iunwfc = iunwfc + myrank_main 
++       write(ca,'(i0)') myrank_main
++       CALL diropn( iunwfc, 'wfc'//trim(ca)//'_', 2*nwordwfc, exst )
++     END IF 
++
+      CALL davcio ( evc, 2*nwordwfc, iunwfc, nks, 1 )
+      IF (io_level < 1) CLOSE ( UNIT=iunwfc, STATUS='keep' )
+   END IF
+diff -Nrup q-e-qe-6.2.1.original/PW/src/pw2casino.f90 q-e-qe-6.2.1/PW/src/pw2casino.f90
+--- q-e-qe-6.2.1.original/PW/src/pw2casino.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/pw2casino.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -29,7 +29,7 @@ SUBROUTINE pw2casino( istep )
+   INTEGER, INTENT (IN) :: istep
+   !
+   CHARACTER(len=4) :: postfix
+-  CHARACTER(len=6), EXTERNAL :: int_to_char
++  CHARACTER(len=6), EXTERNAL :: int_to_char_
+   INTEGER, EXTERNAL :: find_free_unit
+   INTEGER :: tmp_unit
+   INTEGER  :: ios
+@@ -76,7 +76,7 @@ SUBROUTINE pw2casino( istep )
+                postfix)   ! postfix
+ 
+     ELSE
+-      postfix=trim(int_to_char(istep))
++      postfix=trim(int_to_char_(istep))
+       CALL write_casino_wfn( &
+                casino_gather, & ! gather
+                blip_convert,  & ! blip
+diff -Nrup q-e-qe-6.2.1.original/PW/src/pw_restart.f90 q-e-qe-6.2.1/PW/src/pw_restart.f90
+--- q-e-qe-6.2.1.original/PW/src/pw_restart.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/pw_restart.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -158,6 +158,9 @@ MODULE pw_restart
+       USE london_module,        ONLY : scal6, lon_rcut, in_C6, in_rvdw
+       USE tsvdw_module,         ONLY : vdw_isolated
+       USE Coul_cut_2D,          ONLY : do_cutoff_2D 
++
++      ! ...  added for PIMD calculation
++      use common_variables, only : myrank_main
+       
+       !
+       IMPLICIT NONE
+@@ -175,6 +178,9 @@ MODULE pw_restart
+       LOGICAL               :: lwfc, lrho, lxsd
+       CHARACTER(iotk_attlenx)  :: attr
+       !
++      ! ...  added for PIMD calculation
++      character(len=1024) :: ca
++
+       !
+       SELECT CASE( what )
+       CASE( "all" )
+@@ -465,8 +471,15 @@ MODULE pw_restart
+ !-------------------------------------------------------------------------------
+          !
+          !
+-         filename = "./charge-density.dat"
+-         IF ( .NOT. rho_binary ) filename = "./charge-density.xml"
++
++         ! ...  added for PIMD calculation
++         write(ca,'(i0)') myrank_main
++
++!!!         filename = "./charge-density.dat"
++         filename = './charge-density_'//trim(ca)//'.dat'
++!!!         IF ( .NOT. rho_binary ) filename = "./charge-density.xml"
++         IF ( .NOT. rho_binary ) filename = './charge-density_'//trim(ca)//'.xml'
++
+          !
+          CALL iotk_link( iunpun, "CHARGE-DENSITY", TRIM(filename), &
+                                   CREATE=.FALSE., BINARY=.TRUE. )
+diff -Nrup q-e-qe-6.2.1.original/PW/src/pw_restart_new.f90 q-e-qe-6.2.1/PW/src/pw_restart_new.f90
+--- q-e-qe-6.2.1.original/PW/src/pw_restart_new.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/pw_restart_new.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -32,7 +32,7 @@ MODULE pw_restart_new
+   !
+   IMPLICIT NONE
+   !
+-  CHARACTER(LEN=6), EXTERNAL :: int_to_char
++  CHARACTER(LEN=6), EXTERNAL :: int_to_char_
+   PRIVATE
+   PUBLIC :: pw_write_schema, pw_write_binaries, &
+        pw_readschema_file, init_vars_from_schema, read_collected_to_evc
+@@ -561,12 +561,12 @@ MODULE pw_restart_new
+             ik_g = MOD ( ik_g-1, nkstot/2 ) + 1 
+             ispin = isk(ik)
+             filename = TRIM(dirname) // 'wfc' // updw(ispin) // &
+-                 & TRIM(int_to_char(ik_g))
++                 & TRIM(int_to_char_(ik_g))
+             !
+          ELSE
+             !
+             ispin = 1
+-            filename = TRIM(dirname) // 'wfc' // TRIM(int_to_char(ik_g))
++            filename = TRIM(dirname) // 'wfc' // TRIM(int_to_char_(ik_g))
+             !
+          ENDIF
+          !
+@@ -1955,11 +1955,11 @@ MODULE pw_restart_new
+             ik_g = MOD ( ik_g-1, nkstot/2 ) + 1 
+             ispin = isk(ik)
+             filename = TRIM(dirname) // 'wfc' // updw(ispin) // &
+-                 & TRIM(int_to_char(ik_g))
++                 & TRIM(int_to_char_(ik_g))
+             !
+          ELSE
+             !
+-            filename = TRIM(dirname) // 'wfc' // TRIM(int_to_char(ik_g))
++            filename = TRIM(dirname) // 'wfc' // TRIM(int_to_char_(ik_g))
+             !
+          ENDIF
+          !
+diff -Nrup q-e-qe-6.2.1.original/PW/src/qe_electrons0.f90 q-e-qe-6.2.1/PW/src/qe_electrons0.f90
+--- q-e-qe-6.2.1.original/PW/src/qe_electrons0.f90	1970-01-01 09:00:00.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/qe_electrons0.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -0,0 +1,57 @@
++!c///////////////////////////////////////////////////////////////////////
++!c
++!c      Author:          
++!c      Last updated:    
++!c      Description:     interface functions with qe
++!c
++!c///////////////////////////////////////////////////////////////////////
++!c***********************************************************************
++      subroutine qe_electrons0(exit_status)
++!c***********************************************************************
++!
++  !
++  USE io_global,        ONLY : stdout, ionode, ionode_id
++  USE parameters,       ONLY : ntypx, npk, lmaxx
++  USE cell_base,        ONLY : fix_volume, fix_area
++  USE control_flags,    ONLY : conv_elec, gamma_only, ethr, lscf, twfcollect
++  USE control_flags,    ONLY : conv_ions, istep, nstep, restart, lmd, lbfgs
++  USE command_line_options, ONLY : command_line
++  USE force_mod,        ONLY : lforce, lstres, sigma, force
++  USE check_stop,       ONLY : check_stop_init, check_stop_now
++  USE mp_images,        ONLY : intra_image_comm
++  USE extrapolation,    ONLY : update_file, update_pot
++  USE scf,              ONLY : rho
++  USE lsda_mod,         ONLY : nspin
++  USE fft_base,         ONLY : dfftp
++  USE qmmm,             ONLY : qmmm_initialization, qmmm_shutdown, &
++                               qmmm_update_positions, qmmm_update_forces
++  USE qexsd_module,     ONLY:   qexsd_set_status
++  !
++  IMPLICIT NONE
++  INTEGER, INTENT(OUT) :: exit_status
++  !! Gives the exit status at the end
++  LOGICAL, external :: matches
++  !! checks if first string is contained in the second
++  INTEGER :: idone 
++  ! counter of electronic + ionic steps done in this run
++  !
++    exit_status = 0
++  !
++  !
++  ! ... electronic self-consistency or band structure calculation
++  !
++    CALL electrons()
++  !
++  ! ... code stopped by user or not converged
++  !
++    IF ( check_stop_now() .OR. .NOT. conv_elec ) THEN
++        IF ( check_stop_now() ) exit_status = 255
++        IF ( .NOT. conv_elec )  exit_status =  2
++        CALL qexsd_set_status(exit_status)
++        ! workaround for the case of a single k-point
++        twfcollect = .FALSE.
++        CALL punch( 'config' )
++        RETURN
++     ENDIF
++  !
++      end subroutine qe_electrons0
+diff -Nrup q-e-qe-6.2.1.original/PW/src/qe_force0.f90 q-e-qe-6.2.1/PW/src/qe_force0.f90
+--- q-e-qe-6.2.1.original/PW/src/qe_force0.f90	1970-01-01 09:00:00.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/qe_force0.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -0,0 +1,67 @@
++!c///////////////////////////////////////////////////////////////////////
++!c
++!c      Author:          
++!c      Last updated:    
++!c      Description:     interface functions with qe
++!c
++!c///////////////////////////////////////////////////////////////////////
++!c***********************************************************************
++      subroutine qe_force0(exit_status)
++!c***********************************************************************
++!
++  !
++  USE io_global,        ONLY : stdout, ionode, ionode_id
++  USE parameters,       ONLY : ntypx, npk, lmaxx
++  USE cell_base,        ONLY : fix_volume, fix_area
++  USE control_flags,    ONLY : conv_elec, gamma_only, ethr, lscf, twfcollect
++  USE control_flags,    ONLY : conv_ions, istep, nstep, restart, lmd, lbfgs
++  USE command_line_options, ONLY : command_line
++  USE force_mod,        ONLY : lforce, lstres, sigma, force
++  USE check_stop,       ONLY : check_stop_init, check_stop_now
++  USE mp_images,        ONLY : intra_image_comm
++  USE extrapolation,    ONLY : update_file, update_pot
++  USE scf,              ONLY : rho
++  USE lsda_mod,         ONLY : nspin
++  USE fft_base,         ONLY : dfftp
++  USE qmmm,             ONLY : qmmm_initialization, qmmm_shutdown, &
++                               qmmm_update_positions, qmmm_update_forces
++  USE qexsd_module,     ONLY:   qexsd_set_status
++  !
++  IMPLICIT NONE
++  INTEGER, INTENT(OUT) :: exit_status
++  !! Gives the exit status at the end
++  LOGICAL, external :: matches
++  !! checks if first string is contained in the second
++  INTEGER :: idone 
++  ! counter of electronic + ionic steps done in this run
++  !
++    exit_status = 0
++  !
++  ! ... ionic section starts here
++  !
++    CALL start_clock( 'ions' ); !write(*,*)' start ions' ; FLUSH(6)
++    conv_ions = .TRUE.
++  !
++  ! ... recover from a previous run, if appropriate
++  !
++  !IF ( restart .AND. lscf ) CALL restart_in_ions()
++  !
++  !
++  ! ... file in CASINO format written here if required
++  !
++  ! comment out for PIMD ! IF ( lmd ) THEN
++  ! comment out for PIMD !      CALL pw2casino( istep )
++  ! comment out for PIMD !   ELSE
++  ! comment out for PIMD !      CALL pw2casino( 0 )
++  ! comment out for PIMD !   END IF
++  !
++  ! ... force calculation
++  !
++  IF ( lforce ) CALL forces()
++  !
++  ! ... stress calculation
++  !
++  IF ( lstres ) CALL stress ( sigma )
++  !
++  !
++      end subroutine qe_force0
+diff -Nrup q-e-qe-6.2.1.original/PW/src/qe_init0.f90 q-e-qe-6.2.1/PW/src/qe_init0.f90
+--- q-e-qe-6.2.1.original/PW/src/qe_init0.f90	1970-01-01 09:00:00.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/qe_init0.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -0,0 +1,99 @@
++!c///////////////////////////////////////////////////////////////////////
++!c
++!c      Author:          
++!c      Last updated:    
++!c      Description:     interface functions with qe
++!c
++!c///////////////////////////////////////////////////////////////////////
++!c***********************************************************************
++      subroutine qe_init0(nstep_qe,exit_status)
++!c***********************************************************************
++!
++  !
++  USE io_global,        ONLY : stdout, ionode, ionode_id
++  USE parameters,       ONLY : ntypx, npk, lmaxx
++  USE cell_base,        ONLY : fix_volume, fix_area
++  USE control_flags,    ONLY : conv_elec, gamma_only, ethr, lscf, twfcollect
++  USE control_flags,    ONLY : conv_ions, istep, nstep, restart, lmd, lbfgs
++  USE command_line_options, ONLY : command_line
++  USE force_mod,        ONLY : lforce, lstres, sigma, force
++  USE check_stop,       ONLY : check_stop_init, check_stop_now
++  USE mp_images,        ONLY : intra_image_comm
++  USE extrapolation,    ONLY : update_file, update_pot
++  USE scf,              ONLY : rho
++  USE lsda_mod,         ONLY : nspin
++  USE fft_base,         ONLY : dfftp
++  USE qmmm,             ONLY : qmmm_initialization, qmmm_shutdown, &
++                               qmmm_update_positions, qmmm_update_forces
++  USE qexsd_module,     ONLY:   qexsd_set_status
++
++  USE cellmd,          ONLY : lmovecell
++  !
++  IMPLICIT NONE
++  ! 
++  integer, intent(in) :: nstep_qe
++  ! 
++  INTEGER, INTENT(OUT) :: exit_status
++  !! Gives the exit status at the end
++  LOGICAL, external :: matches
++  !! checks if first string is contained in the second
++  INTEGER :: idone 
++  ! counter of electronic + ionic steps done in this run
++  !
++  exit_status = 0
++  !
++  !
++  IF ( ionode ) WRITE( unit = stdout, FMT = 9010 ) ntypx, npk, lmaxx
++  !
++  IF (ionode) CALL plugin_arguments()
++  CALL plugin_arguments_bcast( ionode_id, intra_image_comm )
++  !
++  ! ... needs to come before iosys() so some input flags can be
++  !     overridden without needing to write PWscf specific code.
++  ! 
++  CALL qmmm_initialization()
++  !
++  ! ... convert to internal variables
++  !
++  CALL iosys()
++  ! 
++  ! ... nstep is forced to be the value of PIMD input 
++  write(stdout,*) 
++  write(stdout,*) '    -- for PIMD -- '
++  if(nstep /= nstep_qe) then
++    write(stdout,*) '    nstep in QE input   ',nstep
++    write(stdout,*) '    nstep in PIMD input ',nstep_qe    
++    write(stdout,*) '    nstep is forced to be the value of PIMD input'
++  end if
++  nstep = nstep_qe
++  write(stdout,*) '    In qe_init0 ::  nstep = ',nstep  
++  write(stdout,*) '    ------------- '
++  write(stdout,*) 
++  !
++  ! ...  set flag for PIMD 
++
++!bb!  lscf   = .true.
++!bb!  lforce = .true.
++!bb!  lstres = .true.
++!bb!  lmd    = .true.
++!bb!  lmovecell = .false.
++
++  write(stdout,*) '    -- flag for PIMD -- '
++  write(stdout,*) '    lscf,lforce,lstres,lmd :: ',lscf,lforce,lstres,lmd
++  write(stdout,*) '    ------------- '
++  write(stdout,*) 
++  !
++  ! ... If executable names is "dist.x", compute atomic distances, angles,
++  ! ... nearest neighbors, write them to file "dist.out", exit
++  !
++  IF ( matches('dist.x',command_line) ) THEN
++     IF (ionode) CALL run_dist ( exit_status )
++     RETURN
++  END IF
++  !
++9010 FORMAT( /,5X,'Current dimensions of program PWSCF are:', &
++           & /,5X,'Max number of different atomic species (ntypx) = ',I2,&
++           & /,5X,'Max number of k-points (npk) = ',I6,&
++           & /,5X,'Max angular momentum in pseudopotentials (lmaxx) = ',i2)
++  !
++      end subroutine qe_init0
+diff -Nrup q-e-qe-6.2.1.original/PW/src/qe_init1.f90 q-e-qe-6.2.1/PW/src/qe_init1.f90
+--- q-e-qe-6.2.1.original/PW/src/qe_init1.f90	1970-01-01 09:00:00.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/qe_init1.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -0,0 +1,74 @@
++!c///////////////////////////////////////////////////////////////////////
++!c
++!c      Author:          
++!c      Last updated:    
++!c      Description:     interface functions with qe
++!c
++!c///////////////////////////////////////////////////////////////////////
++!c***********************************************************************
++      subroutine qe_init1(nstep_qe,exit_status)
++!c***********************************************************************
++!
++  !
++  USE io_global,        ONLY : stdout, ionode, ionode_id
++  USE parameters,       ONLY : ntypx, npk, lmaxx
++  USE cell_base,        ONLY : fix_volume, fix_area
++  USE control_flags,    ONLY : conv_elec, gamma_only, ethr, lscf, twfcollect
++  USE control_flags,    ONLY : conv_ions, istep, nstep, restart, lmd, lbfgs
++  USE command_line_options, ONLY : command_line
++  USE force_mod,        ONLY : lforce, lstres, sigma, force
++  USE check_stop,       ONLY : check_stop_init, check_stop_now
++  USE mp_images,        ONLY : intra_image_comm
++  USE extrapolation,    ONLY : update_file, update_pot
++  USE scf,              ONLY : rho
++  USE lsda_mod,         ONLY : nspin
++  USE fft_base,         ONLY : dfftp
++  USE qmmm,             ONLY : qmmm_initialization, qmmm_shutdown, &
++                               qmmm_update_positions, qmmm_update_forces
++  USE qexsd_module,     ONLY:   qexsd_set_status
++  !
++  IMPLICIT NONE
++  ! 
++  integer, intent(in) :: nstep_qe
++  ! 
++  INTEGER, INTENT(OUT) :: exit_status
++  !! Gives the exit status at the end
++  LOGICAL, external :: matches
++  !! checks if first string is contained in the second
++  INTEGER :: idone 
++  ! counter of electronic + ionic steps done in this run
++  !
++  !
++  IF ( gamma_only ) WRITE( UNIT = stdout, &
++     & FMT = '(/,5X,"gamma-point specific algorithms are used")' )
++  !
++  ! call to void routine for user defined / plugin patches initializations
++  !
++  CALL plugin_initialization()
++  !
++  CALL check_stop_init()
++  !
++  CALL setup ()
++  !
++  CALL qmmm_update_positions()
++  !
++  CALL init_run()
++  !
++  ! ... dry run: code will stop here if called with exit file present
++  ! ... useful for a quick and automated way to check input data
++  !
++  IF ( check_stop_now() ) THEN
++     CALL qexsd_set_status(255)
++     CALL punch( 'config' )
++     exit_status = 255
++     RETURN
++  ENDIF
++  !
++  !
++  !
++9010 FORMAT( /,5X,'Current dimensions of program PWSCF are:', &
++           & /,5X,'Max number of different atomic species (ntypx) = ',I2,&
++           & /,5X,'Max number of k-points (npk) = ',I6,&
++           & /,5X,'Max angular momentum in pseudopotentials (lmaxx) = ',i2)
++  !
++      end subroutine qe_init1
+diff -Nrup q-e-qe-6.2.1.original/PW/src/qe_interface.f90 q-e-qe-6.2.1/PW/src/qe_interface.f90
+--- q-e-qe-6.2.1.original/PW/src/qe_interface.f90	1970-01-01 09:00:00.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/qe_interface.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -0,0 +1,326 @@
++!///////////////////////////////////////////////////////////////////////
++!
++!      Author:          M. Shiga
++!      Last updated:    Sep 4, 2018 by M. Shiga
++!      Description:     interface with PIMD
++!
++!///////////////////////////////////////////////////////////////////////
++!***********************************************************************
++      subroutine qe_init(ierr0)
++!***********************************************************************
++!
++      use qe_variables,      only :                                    &
++        qe_input_file_name, qe_output_all_proc,                        &
++        coord_x, coord_y, coord_z,                                     &
++        force_x, force_y, force_z, nstep_qe
++!
++      use common_variables, only :                                     &
++        nprocs_sub, mpi_group_sub, mpi_group_world,                    &
++        myrank, mpi_comm_sub, myrank_sub,                              &
++        nprocs_main, myrank_main,                                      &
++        natom, nstep
++!
++      use environment,       only : environment_start
++      use mp_global,         only : mp_startup
++      use io_global,         only : stdout
++      use util_param,        only : stdout1 => stdout
++      use read_input,        only : read_input_file
++      use command_line_options, only: input_file_, command_line
++      use input_parameters,  only: nat, ntyp
++!
++      IMPLICIT NONE
++!
++      integer, intent(out) :: ierr0
++      integer :: i
++      integer :: exit_status
++      logical :: od
++      character(len=1024) :: output_stdfile
++      character(len=1024) :: buf
++!
++      ierr0 = 0
++!
++      CALL mp_startup ( mpi_comm_sub, start_images=.true.,             &
++         diag_in_band_group = .true. )
++!
++!     /*   reset stdout   */
++!
++      stdout = stdout + myrank
++      stdout1 = stdout
++!
++!     /*   filename of standard output   */
++!
++      if ( myrank_sub == 0 ) then
++        if ( qe_output_all_proc == 1 ) then
++           write(buf,'(i0)') myrank_main
++           output_stdfile = 'log_qe'//'.'//trim(buf)
++        else if ( qe_output_all_proc == 0 ) then
++           if( myrank_main == 0 ) then
++              write( buf, '(i0)' ) myrank_main
++              output_stdfile = 'log_qe'//'.'//trim(buf)
++           else
++              output_stdfile = '/dev/null' 
++           end if
++           else if(qe_output_all_proc == -1) then
++              output_stdfile = '/dev/null' 
++           end if
++        else
++        output_stdfile = '/dev/null'
++      end if
++!
++!     /*   log file for QE is opened in PIMD-QE calculation   */
++      OPEN ( unit = stdout, file = output_stdfile, status='unknown' )
++!
++      CALL environment_start ( 'PWSCF' )
++!
++      CALL read_input_file ('PW', qe_input_file_name )
++!
++      nstep_qe = nstep
++!
++      call flush(stdout)
++!
++      call my_mpi_barrier
++!
++      CALL qe_init0(nstep_qe,exit_status)
++!
++      if( .not. allocated(coord_x) ) allocate(coord_x(natom))
++      if( .not. allocated(coord_y) ) allocate(coord_y(natom))
++      if( .not. allocated(coord_z) ) allocate(coord_z(natom))
++      if( .not. allocated(force_x) ) allocate(force_x(natom))
++      if( .not. allocated(force_y) ) allocate(force_y(natom))
++      if( .not. allocated(force_z) ) allocate(force_z(natom))
++!
++      end subroutine qe_init
++!
++!
++!
++!
++!
++!c***********************************************************************
++      subroutine qe_force(ierr0,ierr_bead)
++!c***********************************************************************
++!
++      use qe_variables, only :                                          &
++         coord_x, coord_y, coord_z, force_x, force_y, force_z,          &
++         stress_tensor_ry,total_energy,cell_param,                      &
++         pimd_istep, qe_output_every_nstep, flag_no_output,             &
++         nstep_qe, pimd_ibead
++!
++      use common_variables, only :                                      &
++         au_mass, amu_mass, physmass_spec, species
++!
++      USE cell_base,         ONLY : alat,at,bg,omega
++      USE ions_base,         ONLY : nat, tau
++      USE force_mod,         ONLY : force,sigma
++      USE io_global,         ONLY : ionode, stdout
++      USE ener,              ONLY : etot
++      USE cellmd,            ONLY : at_old, omega_old
++!
++      IMPLICIT NONE
++      integer, intent(out) :: ierr0
++      integer, intent(out) :: ierr_bead
++      integer :: i
++      integer :: exit_status
++      logical :: od
++!
++      integer, save :: itera = 0
++!
++      real(8), save :: alat_save = 0.0d0
++!
++!
++      ierr0 = 0
++!
++!     /*   set flag_no_output   */
++!
++      flag_no_output = .false.
++      if ( qe_output_every_nstep > 0 ) then
++         if( mod(pimd_istep,qe_output_every_nstep) /= 0 ) then
++         flag_no_output = .true.
++         end if
++      else
++         flag_no_output = .true.
++      end if
++!
++!     /*   lattice vector, latice volume, reciprocal lattice vector   */
++!     /*                                                              */
++!     /*   alignments of column are opposite between PIMD & Q.E.      */
++!     /*   cell_param(icoord,iaxis) [a.u.] iaxis=a,b,c icoord=x,y,z   */
++!     /*   at(icoord,iaxis)                iaxis=a,b,c icoord=x,y,z   */
++!
++      alat = sqrt(  cell_param(1,1)**2 + cell_param(2,1)**2            &
++                  + cell_param(3,1)**2 )
++!
++      if(itera == 0) then
++        alat_save = alat
++      else 
++        alat = alat_save 
++      end if 
++!
++      do i = 1, 3
++        at(1,i) = cell_param(1,i)/alat
++        at(2,i) = cell_param(2,i)/alat
++        at(3,i) = cell_param(3,i)/alat
++      end do
++!
++      if(itera /= 0) then
++         at_old = at
++         omega_old = omega
++      end if
++!
++      CALL recips( at(1,1),at(1,2),at(1,3), bg(1,1),bg(1,2),bg(1,3) )
++      CALL volume( alat, at(1,1), at(1,2), at(1,3), omega )
++
++!     /*   tau(atomic position)   */
++!
++      do i = 1, nat
++        tau(1,i) = coord_x(i)/alat
++        tau(2,i) = coord_y(i)/alat
++        tau(3,i) = coord_z(i)/alat
++      end do
++!
++!     /*   print   */
++      if ( .not. flag_no_output ) then
++!
++!        /*   write PIMD step   */
++         write( stdout, '(/,5x,a)' ) &
++         '***************************************'
++         write( stdout, '(5x,a,i8)' ) &
++         '     PIMD step =   ', pimd_istep
++         write( stdout, '(5x,a)' ) &
++         '***************************************'
++!
++         write( stdout, '(/,5x,a)' ) &
++         '***************************************'
++         write( stdout, '(5x,a,f14.6)') &
++         '     alat [a.u.]   ', alat
++         write( stdout, '(5x,a,f14.6)') &
++         '     omega[a.u.^3] ', omega
++         write( stdout, '(5x,a)' ) &
++         '***************************************'
++!
++!        if ( itera == 0 ) then
++           write( stdout, '(/,5x,a)' ) &
++           '***************************************'
++           write( stdout, '(5x,a)' ) &
++           '     lattice vector [a.u.]'
++           write( stdout, '(5x,a)' ) &
++           '***************************************'
++           do i = 1, 3
++              write( stdout,'(5x,i3,3f12.6)') i, at(1:3,i)*alat
++           end do
++           write( stdout, '(5x,a)' ) &
++           '***************************************'
++!        end if
++!        if ( itera == 0 ) then
++           write( stdout, '(/,5x,a)' ) &
++           '***************************************'
++           write( stdout, '(5x,a)' ) &
++           '     lattice vector [-]'
++           write( stdout, '(5x,a)' ) &
++           '***************************************'
++           do i = 1, 3
++              write( stdout,'(5x,i3,3f12.6)') i, at(1:3,i)
++           end do
++           write( stdout, '(5x,a)' ) &
++           '***************************************'
++!        end if
++!
++        write( stdout, '(/,5x,a)' ) &
++        '***************************************'
++        write( stdout, '(5x,a)' ) &
++        '     coord_xyz [a.u.]'
++        write( stdout, '(5x,a)' ) &
++        '***************************************'
++        do i = 1, nat
++           write( stdout, '(5x,i3,3f12.6)' ) &
++             i, coord_x(i), coord_y(i), coord_z(i)
++        end do 
++        write( stdout, '(5x,a)' ) &
++        '***************************************'
++        write( stdout, '(/,5x,a)' ) &
++        '***************************************'
++        write( stdout, '(5x,a)' ) &
++        '     atomic position [-]'
++        write( stdout, '(5x,a)' ) &
++        '***************************************'
++        do i = 1, nat
++           write( stdout, '(5x,i3,3f12.6)' ) i, tau(1:3,i)
++        end do 
++        write( stdout, '(5x,a)' ) &
++        '***************************************'
++!
++!     /*   print   */
++      end if
++!
++      if ( itera /= 0 ) then
++         call qe_wavefunction0( itera, exit_status )
++         itera = itera + 1
++      else
++         CALL  qe_init1( nstep_qe, exit_status )
++         itera = 1
++      end if
++!
++      call qe_electrons0( exit_status )
++!
++      if(exit_status == 2) then
++         write( stdout, '(/,a)' ) &
++        '#############################################################################'
++         write( stdout, '(a)' ) &
++        '#############################################################################'
++         write( stdout, '(/,a,i5)' ) &
++        ' ##ERROR## convergence of electronic state NOT achieved  in bead ', pimd_ibead
++         write( stdout, '(/,a)' ) &
++        '#############################################################################'
++         write( stdout, '(a)' ) &
++        '#############################################################################'
++!!!         call stop_run( exit_status )
++!
++         ierr0 = exit_status
++         ierr_bead = pimd_ibead
++!
++         return
++      end if
++!
++      call qe_force0( exit_status )
++!
++!     /*   unit [Ry] -> [Hatree]   */
++      total_energy = etot * 0.5d0
++!
++!     /*   unit [Ry/a.u.] -> [Hatree/a.u.]   */
++      do i = 1, nat
++        force_x(i) = force(1,i) * 0.5d0
++        force_y(i) = force(2,i) * 0.5d0
++        force_z(i) = force(3,i) * 0.5d0
++      end do
++!
++!     /*   unit [Ry/a.u.]   */
++      stress_tensor_ry(:,:) = sigma(:,:)
++!
++      end subroutine qe_force
++!
++!
++!
++!
++!
++!c***********************************************************************
++      subroutine qe_finalize(ierr0)
++!c***********************************************************************
++!
++      use qe_variables, only :                                          &
++      coord_x, coord_y, coord_z, force_x, force_y, force_z
++!
++      IMPLICIT NONE
++      integer, intent(out) :: ierr0
++!
++      ierr0 = 0
++!
++!     /*   Deallocate arrays in qe_variables module   */
++!
++      if( allocated(coord_x) ) deallocate(coord_x)
++      if( allocated(coord_y) ) deallocate(coord_y)
++      if( allocated(coord_z) ) deallocate(coord_z)
++      if( allocated(force_x) ) deallocate(force_x)
++      if( allocated(force_y) ) deallocate(force_y)
++      if( allocated(force_z) ) deallocate(force_z)
++!
++      end subroutine qe_finalize
++
+diff -Nrup q-e-qe-6.2.1.original/PW/src/qe_wavefunction0.f90 q-e-qe-6.2.1/PW/src/qe_wavefunction0.f90
+--- q-e-qe-6.2.1.original/PW/src/qe_wavefunction0.f90	1970-01-01 09:00:00.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/qe_wavefunction0.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -0,0 +1,119 @@
++!c///////////////////////////////////////////////////////////////////////
++!c
++!c      Author:          
++!c      Last updated:    
++!c      Description:     interface functions with qe
++!c
++!c///////////////////////////////////////////////////////////////////////
++!c***********************************************************************
++      subroutine qe_wavefunction0(itera,exit_status)
++!c***********************************************************************
++!
++  !
++  USE io_global,        ONLY : stdout, ionode, ionode_id
++  USE parameters,       ONLY : ntypx, npk, lmaxx
++  USE cell_base,        ONLY : fix_volume, fix_area, at, omega
++  USE control_flags,    ONLY : conv_elec, gamma_only, ethr, lscf, twfcollect
++  USE control_flags,    ONLY : conv_ions, istep, nstep, restart, lmd, lbfgs
++  USE command_line_options, ONLY : command_line
++  USE force_mod,        ONLY : lforce, lstres, sigma, force
++  USE check_stop,       ONLY : check_stop_init, check_stop_now
++  USE mp_images,        ONLY : intra_image_comm
++  USE extrapolation,    ONLY : update_file, update_pot
++  USE scf,              ONLY : rho
++  USE lsda_mod,         ONLY : nspin
++  USE fft_base,         ONLY : dfftp
++  USE qmmm,             ONLY : qmmm_initialization, qmmm_shutdown, &
++                               qmmm_update_positions, qmmm_update_forces
++  USE qexsd_module,     ONLY:   qexsd_set_status
++  USE cellmd,          ONLY : lmovecell,at_old, omega_old
++
++
++
++  use common_variables, only : method
++
++
++  !
++  IMPLICIT NONE
++  !
++  integer, intent(in) :: itera
++  !
++  INTEGER, INTENT(OUT) :: exit_status
++  !! Gives the exit status at the end
++  LOGICAL, external :: matches
++  !! checks if first string is contained in the second
++  INTEGER :: idone 
++  !
++  integer :: i
++  logical :: od      
++  !
++  ! counter of electronic + ionic steps done in this run
++  !
++    exit_status = 0
++  !
++    idone = itera
++  !
++!!!  write(stdout,*) 'In qe_wavefunction0 ::  idone = ',idone
++  !
++  ! ... send out forces to MM code in QM/MM run
++  !
++  IF ( lmd .OR. lbfgs ) THEN
++     !
++     ! comment out for PIMD !      if (fix_volume) CALL impose_deviatoric_stress(sigma)
++     ! comment out for PIMD !      if (fix_area)  CALL  impose_deviatoric_stress_2d(sigma)
++     !
++     ! ... save data needed for potential and wavefunction extrapolation
++     !
++     CALL update_file ( )
++     !
++     ! ... ionic step (for molecular dynamics or optimization)
++     !
++     ! comment out for PIMD !      CALL move_ions ( idone )
++     ! ... call subroutine 'move_ions2'
++     !
++     CALL move_ions2 ( idone )
++     !
++     ! ... then we save restart information for the new configuration
++     !
++     IF ( itera <= nstep .AND. .NOT. conv_ions ) THEN 
++         CALL qexsd_set_status(255)
++         CALL punch( 'config' )
++     END IF
++     !
++  END IF
++  !
++  CALL stop_clock( 'ions' ); !write(*,*)' stop ions' ; FLUSH(6)
++  !
++  ! comment out for PIMD !  CALL qmmm_update_forces( force, rho%of_r, nspin, dfftp)
++  !
++  ! ... exit condition (ionic convergence) is checked here
++  !
++  IF ( lmd .OR. lbfgs ) CALL add_qexsd_step(idone)
++  ! comment out for PIMD !  IF ( conv_ions ) EXIT main_loop
++  !
++  ! ... receive new positions from MM code in QM/MM run
++  !
++  ! comment out for PIMD !  CALL qmmm_update_positions()
++  !
++  ! ... terms of the hamiltonian depending upon nuclear positions
++  ! ... are reinitialized here
++  !
++  IF ( lmd .OR. lbfgs ) THEN
++     !
++     ! ... update the wavefunctions, charge density, potential
++     ! ... update_pot initializes structure factor array as well
++     !
++     CALL update_pot()
++     !
++     ! ... re-initialize atomic position-dependent quantities
++     !
++     CALL hinit1()
++     !
++  END IF
++  ! ... Reset convergence threshold of iterative diagonalization for
++  ! ... the first scf iteration of each ionic step (after the first)
++  !
++     ethr = 1.0D-6
++  !
++  !
++      end subroutine qe_wavefunction0
+diff -Nrup q-e-qe-6.2.1.original/PW/src/read_file.f90 q-e-qe-6.2.1/PW/src/read_file.f90
+--- q-e-qe-6.2.1.original/PW/src/read_file.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/read_file.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -38,11 +38,19 @@ SUBROUTINE read_file()
+ #if defined (__HDF5)
+   USE hdf5_qe
+ #endif
++
++  ! ...  added for PIMD calculation
++  use common_variables, only : myrank_main
++
+   !
+   IMPLICIT NONE 
+   INTEGER :: ierr
+   LOGICAL :: exst
+   CHARACTER( 256 )  :: dirname
++
++  ! ...  added for PIMD calculation
++  character(len=1024) :: ca
++
+   !
+   !
+   ierr = 0 
+@@ -64,7 +72,13 @@ SUBROUTINE read_file()
+   wfc_dir = tmp_dir
+   nwordwfc = nbnd*npwx*npol
+   io_level = 1
+-  CALL open_buffer ( iunwfc, 'wfc', nwordwfc, io_level, exst )
++
++  ! ...  added for PIMD calculation
++  iunwfc = iunwfc + myrank_main 
++  write(ca,'(i0)') myrank_main
++!!!  CALL open_buffer ( iunwfc, 'wfc', nwordwfc, io_level, exst )
++  CALL open_buffer ( iunwfc, 'wfc'//trim(ca)//'_', nwordwfc, io_level, exst )
++
+   !
+   ! ... Allocate and compute k+G indices and number of plane waves
+   ! ... FIXME: should be read from file, not re-computed
+diff -Nrup q-e-qe-6.2.1.original/PW/src/read_file_new.f90 q-e-qe-6.2.1/PW/src/read_file_new.f90
+--- q-e-qe-6.2.1.original/PW/src/read_file_new.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/read_file_new.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -36,12 +36,20 @@ SUBROUTINE read_file()
+   USE klist,                ONLY : init_igk
+   USE gvect,                ONLY : ngm, g
+   USE gvecw,                ONLY : gcutw
++
++  ! ...  added for PIMD calculation
++  use common_variables, only : myrank_main
++
+   !
+   IMPLICIT NONE 
+   INTEGER :: ierr
+   LOGICAL :: exst
+   CHARACTER( LEN=256 )  :: dirname
+   !
++
++  ! ...  added for PIMD calculation
++  character(len=1024) :: ca
++
+   !
+   ierr = 0 
+   !
+@@ -60,7 +68,13 @@ SUBROUTINE read_file()
+   wfc_dir = tmp_dir
+   nwordwfc = nbnd*npwx*npol
+   io_level = 1
+-  CALL open_buffer ( iunwfc, 'wfc', nwordwfc, io_level, exst )
++
++  ! ...  added for PIMD calculation
++  iunwfc = iunwfc + myrank_main 
++  write(ca,'(i0)') myrank_main
++!!!  CALL open_buffer ( iunwfc, 'wfc', nwordwfc, io_level, exst )
++  CALL open_buffer ( iunwfc, 'wfc'//trim(ca)//'_', nwordwfc, io_level, exst )
++
+   !
+   ! ... Allocate and compute k+G indices and number of plane waves
+   ! ... FIXME: should be read from file, not re-computed
+diff -Nrup q-e-qe-6.2.1.original/PW/src/run_driver.f90 q-e-qe-6.2.1/PW/src/run_driver.f90
+--- q-e-qe-6.2.1.original/PW/src/run_driver.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/run_driver.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -365,22 +365,48 @@ CONTAINS
+     ! ... is achieved by deleting the file and recreating it using
+     ! ... update_file() routine.
+     !
++
++    ! ...  added for PIMD calculation
++    use common_variables, only : myrank_main
++
+     IMPLICIT NONE
+     LOGICAL :: exst
++
++    ! ...  added for PIMD calculation
++    character(len=1024) :: ca
++
+     !
+     ! ... Delete history files, names correspond to the ones
+     ! ... in the update_pot() routine.
+     !
+-    CALL delete_if_present(TRIM( wfc_dir ) // TRIM( prefix ) // '.oldwfc' // nd_nmbr)
+-    CALL delete_if_present(TRIM( wfc_dir ) // TRIM( prefix ) // '.old2wfc' // nd_nmbr)
++
++    ! ...  added for PIMD calculation
++    write(ca,'(i0)') myrank_main
++!!!    CALL delete_if_present(TRIM( wfc_dir ) // TRIM( prefix ) // '.oldwfc' // nd_nmbr)
++!!!    CALL delete_if_present(TRIM( wfc_dir ) // TRIM( prefix ) // '.old2wfc' // nd_nmbr)
++    CALL delete_if_present(TRIM( wfc_dir ) // TRIM( prefix ) // '.oldwfc'//trim(ca)//'_'// nd_nmbr)
++    CALL delete_if_present(TRIM( wfc_dir ) // TRIM( prefix ) // '.old2wfc'//trim(ca)//'_'// nd_nmbr)
++
+     IF ( ionode ) THEN
+-       CALL delete_if_present(TRIM( tmp_dir ) // TRIM( prefix ) // '.save/' // 'charge-density.old.dat')
+-       CALL delete_if_present(TRIM( tmp_dir ) // TRIM( prefix ) // '.save/' // 'charge-density.old2.dat')
++
++       ! ...  added for PIMD calculation
++       write(ca,'(i0)') myrank_main
++
++!!!       CALL delete_if_present(TRIM( tmp_dir ) // TRIM( prefix ) // '.save/' // 'charge-density.old.dat')
++!!!       CALL delete_if_present(TRIM( tmp_dir ) // TRIM( prefix ) // '.save/' // 'charge-density.old2.dat')
++       CALL delete_if_present(TRIM( tmp_dir ) // TRIM( prefix ) // '.save/' // 'charge-density.old_'//trim(ca)//'.dat')
++       CALL delete_if_present(TRIM( tmp_dir ) // TRIM( prefix ) // '.save/' // 'charge-density.old2_'//trim(ca)//'.dat')
++
+        !
+        ! ... The easiest way to wipe the iunupdate unit, is to delete it
+        ! ... and run update_file(), which will recreate the file
+        !
+-       CALL seqopn( iunupdate, 'update', 'FORMATTED', exst )
++
++       ! ...  added for PIMD calculation
++       iunupdate = iunupdate + myrank_main 
++!!!       CALL seqopn( iunupdate, 'update', 'FORMATTED', exst )
++       CALL seqopn( iunupdate, 'update'//trim(ca)//'_', 'FORMATTED', exst )
++
+        CLOSE(UNIT=iunupdate, STATUS='DELETE')
+     END IF
+     !
+diff -Nrup q-e-qe-6.2.1.original/PW/src/stress.f90 q-e-qe-6.2.1/PW/src/stress.f90
+--- q-e-qe-6.2.1.original/PW/src/stress.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/stress.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -38,6 +38,10 @@ subroutine stress ( sigma )
+   USE esm,           ONLY : do_comp_esm, esm_bc ! for ESM stress
+   USE esm,           ONLY : esm_stres_har, esm_stres_ewa, esm_stres_loclong ! for ESM stress
+   !
++
++  ! ...  added for PIMD calculation
++  use qe_variables,      only : flag_no_output
++
+   IMPLICIT NONE
+   !
+   REAL(DP), INTENT(OUT) :: sigma(3,3)
+@@ -57,6 +61,7 @@ subroutine stress ( sigma )
+   REAL(DP) :: stress_dftd3(3,3)
+   REAL(DP), ALLOCATABLE :: force_d3(:,:)
+   !
++  if(.not.flag_no_output)    &
+   WRITE( stdout, '(//5x,"Computing stress (Cartesian axis) and pressure"/)')
+ 
+   IF ( noncolin .AND. dft_is_gradient() ) then
+@@ -198,17 +203,21 @@ subroutine stress ( sigma )
+   ! write results in Ryd/(a.u.)^3 and in kbar
+   !
+   IF ( do_comp_esm .and. ( esm_bc .ne. 'pbc' ) ) THEN ! for ESM stress
++     if(.not.flag_no_output)    &
+      write( stdout, 9000) (sigma(1,1) + sigma(2,2)) * ry_kbar/3d0, &
+      sigma(1,1), sigma(1,2), 0.d0, sigma(1,1)*ry_kbar, sigma(1,2)*ry_kbar, 0.d0,&
+      sigma(2,1), sigma(2,2), 0.d0, sigma(2,1)*ry_kbar, sigma(2,2)*ry_kbar, 0.d0,&
+      0.d0      , 0.d0      , 0.d0, 0.d0              , 0.d0              , 0.d0
+   ELSE
++     if(.not.flag_no_output)    &
+      write( stdout, 9000) (sigma(1,1) + sigma(2,2) + sigma(3,3)) * ry_kbar/3d0, &
+                           (sigma(l,1), sigma(l,2), sigma(l,3),                  &
+                            sigma(l,1)*ry_kbar, sigma(l,2)*ry_kbar,              &
+                            sigma(l,3)*ry_kbar, l=1,3)
+   END IF
+ 
++  if(.not.flag_no_output) then  !!!
++  !
+   if ( iverbosity > 0 ) WRITE( stdout, 9005) &
+      (sigmakin(l,1)*ry_kbar,sigmakin(l,2)*ry_kbar,sigmakin(l,3)*ry_kbar, l=1,3),&
+      (sigmaloc(l,1)*ry_kbar,sigmaloc(l,2)*ry_kbar,sigmaloc(l,3)*ry_kbar, l=1,3),&
+@@ -234,6 +243,8 @@ subroutine stress ( sigma )
+      write(stdout,*) "Stress tensor electronic el field part:"
+      write(stdout,*) (sigmaion(l,1),sigmaion(l,2),sigmaion(l,3), l=1,3)
+   endif
++  !
++  end if !!!
+ 
+   call stop_clock ('stress')
+ 
+diff -Nrup q-e-qe-6.2.1.original/PW/src/summary.f90 q-e-qe-6.2.1/PW/src/summary.f90
+--- q-e-qe-6.2.1.original/PW/src/summary.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/summary.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -183,8 +183,22 @@ SUBROUTINE summary()
+   !
+   ! ... and here more detailed information. Description of the unit cell
+   !
+-  WRITE( stdout, '(/2(3X,3(2X,"celldm(",I1,")=",F11.6),/))' ) &
+-       ( i, celldm(i), i = 1, 6 )
++
++  ! ...  added for PIMD calculation(start)
++  ! ... lattice vectors are forced to be those of PIMD input 
++  WRITE(stdout,*) 
++  WRITE(stdout,'(/,5X,A)') '-- for PIMD -- '
++  WRITE(stdout,'(5X,A)')   '!!!!!!!!!!!!!!!!!!!!!!!! notice !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
++  WRITE(stdout,'(5X,A)')   '** Lattice vectors are forced to be those in PIMD input.         **'
++  WRITE(stdout,'(5X,A)')   '** See above. Lattice vectors in PIMD have already been written. **'
++  WRITE(stdout,'(5X,A,/)') '** The following values of celldm in QE input are not used !     **'
++  DO i = 1, 6
++   WRITE(stdout,'(5X,"celldm(",I1,") = ",F11.6," !!! not used !!!")' ) i, celldm(i)
++  ENDDO
++  WRITE(stdout,'(5X,A)')   '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
++  WRITE(stdout,'(5X,A,/)') '------------- '
++  ! ...  added for PIMD calculation(end)
++
+   !
+   WRITE( stdout, '(5X, &
+        &     "crystal axes: (cart. coord. in units of alat)",/, &
+@@ -202,12 +216,25 @@ SUBROUTINE summary()
+   ! ... print the vdw table information if needed
+   CALL print_vdw_info ()
+   !
+-  WRITE( stdout, '(/5x, "atomic species   valence    mass     pseudopotential")')
++
++  ! ...  added for PIMD calculation(start)
++  ! ... lattice vectors are forced to be those of PIMD input 
++  write(stdout,'(/,5X,A)') '-- for PIMD -- '
++  write(stdout,'(5X,A)') '!!!!!!!!!!!!!!!!!!!!!!!! notice !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
++  write(stdout,'(5X,A)') '** Each atomic mass is forced to be that in PIMD input.           **'
++  write(stdout,'(5X,A)') '** See above. Each atomic mass in PIMD has already been written.  **'
++  write(stdout,'(5X,A)') '** The following values of atomic mass in QE input are not used ! **'
++  !!
++  WRITE( stdout, '(/5x, "atomic species   valence  mass(!not used)   pseudopotential")')
+   xp = 1.d0
+   DO nt = 1, ntyp
+-     WRITE( stdout, '(5x,a6,6x,f10.2,2x,f10.5,5x,5 (a2,"(",f5.2,")"))') &
++     WRITE( stdout, '(5x,a6,6x,f10.2,2x,f10.5,10x,5 (a2,"(",f5.2,")"))') &
+                    atm(nt), zv(nt), amass(nt), upf(nt)%psd, xp
+   ENDDO
++  !!
++  write(stdout,'(5X,A)') '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
++  write(stdout,'(5X,A,/)') '------------- '
++  ! ...  added for PIMD calculation(end)
+ 
+   IF (calc.EQ.'cd' .OR. calc.EQ.'cm' ) &
+      WRITE( stdout, '(/5x," cell mass =", f10.5, " AMU ")') cmass/amu_ry
+diff -Nrup q-e-qe-6.2.1.original/PW/src/symm_base.f90 q-e-qe-6.2.1/PW/src/symm_base.f90
+--- q-e-qe-6.2.1.original/PW/src/symm_base.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/symm_base.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -112,7 +112,7 @@ SUBROUTINE set_sym_bl ( )
+   USE matrix_inversion
+   IMPLICIT NONE
+   !
+-  CHARACTER(LEN=6), EXTERNAL :: int_to_char
++  CHARACTER(LEN=6), EXTERNAL :: int_to_char_
+   !
+   ! sin3 = sin(pi/3), cos3 = cos(pi/3), msin3 = -sin(pi/3), mcos3 = -cos(pi/3)
+   !
+@@ -317,7 +317,7 @@ SUBROUTINE set_sym_bl ( )
+   !    This happens for instance for an hexagonal lattice with one axis 
+   !    oriented at 15 degrees from the x axis, the other along (-1,1,0)
+       CALL infomsg('set_sym_bl', 'NOTICE: Symmetry group for Bravais lattice &
+-      &is not a group (' // TRIM(int_to_char(nrot)) // &
++      &is not a group (' // TRIM(int_to_char_(nrot)) // &
+       &') - symmetries are disabled')
+       nrot = 1
+   ENDIF
+diff -Nrup q-e-qe-6.2.1.original/PW/src/update_pot.f90 q-e-qe-6.2.1/PW/src/update_pot.f90
+--- q-e-qe-6.2.1.original/PW/src/update_pot.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/update_pot.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -22,10 +22,16 @@ MODULE extrapolation
+     history,          &! number of old steps available for potential updating
+     pot_order = 0,    &! type of potential updating ( see update_pot )
+     wfc_order = 0      ! type of wavefunctions updating ( see update_pot )
++  !! ... For 2nd order tx extrapolation
++  INTEGER :: &
++    pot_2tx = 0,    &! use flag for potential in 2nd order tx extrapolation
++    wfc_2tx = 0      ! use flag for wavefunctions in 2nd order tx extrapolation
+   !
+   PRIVATE
+   PUBLIC :: pot_order, wfc_order
+   PUBLIC :: update_file, update_neb, update_pot, extrapolate_charge
++  !! ... For 2nd order tx extrapolation
++  PUBLIC :: pot_2tx, wfc_2tx
+   !
+   CONTAINS
+ !
+@@ -42,16 +48,33 @@ SUBROUTINE update_file ( )
+   USE io_global, ONLY : ionode
+   USE io_files,  ONLY : iunupdate, seqopn
+   USE ions_base, ONLY : nat, tau
++
++  ! ...  added for PIMD calculation
++  use common_variables, only : myrank_main
++
+   !
+   IMPLICIT NONE
+   !
+   REAL(DP), ALLOCATABLE :: tauold(:,:,:)
+   LOGICAL :: exst
++
++  ! ...  added for PIMD calculation
++  character(len=1024) :: ca
++
+   !
+   IF ( ionode ) THEN
+      !
+-     ALLOCATE( tauold( 3, nat, 3 ) )
+-     CALL seqopn( iunupdate, 'update', 'FORMATTED', exst ) 
++     !! ... For 3rd,4th order extrapolation
++!!!     ALLOCATE( tauold( 3, nat, 3 ) )
++     ALLOCATE( tauold( 3, nat, 5 ) )
++     !!
++
++     ! ...  added for PIMD calculation
++     iunupdate = iunupdate + myrank_main 
++     write(ca,'(i0)') myrank_main
++!!!     CALL seqopn( iunupdate, 'update', 'FORMATTED', exst ) 
++     CALL seqopn( iunupdate, 'update'//trim(ca)//'_', 'FORMATTED', exst ) 
++
+      IF ( .NOT. exst ) THEN
+         !
+         ! ... file not present, start the procedure
+@@ -63,16 +86,30 @@ SUBROUTINE update_file ( )
+         READ( UNIT = iunupdate, FMT = * ) tauold
+         REWIND( UNIT = iunupdate ) 
+         !
+-        ! ... read and save the previous two steps ( three steps are saved )
++        !! ... For 3rd,4th order extrapolation
++!!!        ! ... read and save the previous two steps ( three steps are saved )
++!!!        !
++!!!        tauold(:,:,3) = tauold(:,:,2)
++!!!        tauold(:,:,2) = tauold(:,:,1)
++!!!        tauold(:,:,1) = tau(:,:)
++!!!        !
++!!!        ! ... history is updated (a new ionic step has been done)
++!!!        !
++!!!        history = MIN( 3, ( history + 1 ) )
++!!!        !
++        ! ... read and save the previous two steps ( five steps are saved )
+         !
++        tauold(:,:,5) = tauold(:,:,4)
++        tauold(:,:,4) = tauold(:,:,3)
+         tauold(:,:,3) = tauold(:,:,2)
+         tauold(:,:,2) = tauold(:,:,1)
+         tauold(:,:,1) = tau(:,:)
+         !
+         ! ... history is updated (a new ionic step has been done)
+         !
+-        history = MIN( 3, ( history + 1 ) )
++        history = MIN( 5, ( history + 1 ) )
+         !
++        !!
+      END IF
+      !
+      ! ... history and positions are written on file, file is closed
+@@ -245,6 +282,10 @@ SUBROUTINE update_pot()
+   USE vlocal,        ONLY : strf
+   USE mp,            ONLY : mp_bcast
+   USE mp_images,     ONLY : intra_image_comm
++
++  ! ...  added for PIMD calculation
++  use common_variables, only : myrank_main
++
+   !
+   IMPLICIT NONE
+   !
+@@ -253,6 +294,10 @@ SUBROUTINE update_pot()
+   INTEGER               :: rho_extr, wfc_extr
+   LOGICAL               :: exists
+   !
++
++  ! ...  added for PIMD calculation
++  character(len=1024) :: ca
++
+   !
+   CALL start_clock( 'update_pot' )
+   !
+@@ -260,7 +305,13 @@ SUBROUTINE update_pot()
+   !
+   IF ( ionode ) THEN
+      !
+-     CALL seqopn( iunupdate, 'update', 'FORMATTED', exists )
++
++     ! ...  added for PIMD calculation
++     iunupdate = iunupdate + myrank_main 
++     write(ca,'(i0)') myrank_main
++!!!     CALL seqopn( iunupdate, 'update', 'FORMATTED', exists )
++     CALL seqopn( iunupdate, 'update'//trim(ca)//'_', 'FORMATTED', exists )
++
+      !
+      IF ( exists ) THEN
+         !
+@@ -304,18 +355,50 @@ SUBROUTINE update_pot()
+         !
+         wfc_extr = MIN( 1, history, wfc_order )
+         !
++
++        ! ...  added for PIMD calculation
++        write(ca,'(i0)') myrank_main
+         INQUIRE( FILE = TRIM( wfc_dir ) // &
+-            & TRIM( prefix ) // '.oldwfc' // nd_nmbr, EXIST = exists )
++!!!            & TRIM( prefix ) // '.oldwfc' // nd_nmbr, EXIST = exists )
++            & TRIM( prefix ) // '.oldwfc'//trim(ca)//'_'// nd_nmbr, EXIST = exists )
++
++
+         !
+         IF ( exists ) THEN
+            !
+            wfc_extr = MIN( 2, history, wfc_order  )
+            !
++
++           ! ...  added for PIMD calculation
++           write(ca,'(i0)') myrank_main
+            INQUIRE( FILE = TRIM( wfc_dir ) // &
+-               & TRIM( prefix ) // '.old2wfc' // nd_nmbr , EXIST = exists )
+-           !
+-           IF ( exists ) wfc_extr = MIN( 3, history, wfc_order )
++!!!               & TRIM( prefix ) // '.old2wfc' // nd_nmbr , EXIST = exists )
++               & TRIM( prefix ) // '.old2wfc'//trim(ca)//'_'// nd_nmbr , EXIST = exists )
+            !
++           !! ... For 3rd,4th order extrapolation
++!!!           IF ( exists ) wfc_extr = MIN( 3, history, wfc_order )
++           IF ( exists ) THEN
++              !
++              wfc_extr = MIN( 3, history, wfc_order )
++              !
++              write(ca,'(i0)') myrank_main
++              INQUIRE( FILE = TRIM( wfc_dir ) // &
++               & TRIM( prefix ) // '.old3wfc'//trim(ca)//'_'// nd_nmbr , EXIST = exists )
++              !       
++              IF ( exists ) THEN
++                 !
++                 wfc_extr = MIN( 4, history, wfc_order )
++                 !
++                 write(ca,'(i0)') myrank_main
++                 INQUIRE( FILE = TRIM( wfc_dir ) // &
++               & TRIM( prefix ) // '.old4wfc'//trim(ca)//'_'// nd_nmbr , EXIST = exists )
++                 !
++                 IF ( exists ) wfc_extr = MIN( 5, history, wfc_order )
++                 !
++              END IF
++              !
++           END IF
++           !!
+         END IF
+         !
+      END IF
+@@ -348,18 +431,48 @@ SUBROUTINE update_pot()
+   IF ( pot_order > 1 .AND. ionode ) THEN
+      !
+      dirname =  TRIM( tmp_dir ) // TRIM( prefix ) // '.save/'
+-     INQUIRE( FILE = TRIM( dirname ) // 'charge-density.old.dat', &
++
++     ! ...  added for PIMD calculation
++     write(ca,'(i0)') myrank_main
++!!!     INQUIRE( FILE = TRIM( dirname ) // 'charge-density.old.dat', &
++     INQUIRE( FILE = TRIM( dirname ) // 'charge-density_'//trim(ca)//'.old.dat', &
+           EXIST = exists )
+      !
+      IF ( exists ) THEN
+         !
+         rho_extr = MIN( 2, history, pot_order )
+         !
+-        INQUIRE( FILE = TRIM( dirname ) //'charge-density.old2.dat', &
++
++        ! ...  added for PIMD calculation
++        write(ca,'(i0)') myrank_main
++!!!        INQUIRE( FILE = TRIM( dirname ) //'charge-density.old2.dat', &
++        INQUIRE( FILE = TRIM( dirname ) //'charge-density_'//trim(ca)//'.old2.dat', &
+              EXIST = exists )
+         !
+-        IF ( exists ) rho_extr = MIN( 3, history, pot_order )
+-        !
++        !! ... For 3rd,4th order extrapolation
++!!!        IF ( exists ) rho_extr = MIN( 3, history, pot_order )
++        IF ( exists ) THEN
++           !
++           rho_extr = MIN( 3, history, pot_order )
++           !
++           write(ca,'(i0)') myrank_main
++           INQUIRE( FILE = TRIM( dirname ) //'charge-density_'//trim(ca)//'.old3.dat', &
++             EXIST = exists )
++           !
++           IF ( exists ) THEN
++              !
++              rho_extr = MIN( 4, history, pot_order )
++              !
++              write(ca,'(i0)') myrank_main
++              INQUIRE( FILE = TRIM( dirname ) //'charge-density_'//trim(ca)//'.old4.dat', &
++                EXIST = exists )
++              !
++              IF ( exists ) rho_extr = MIN( 5, history, pot_order )
++              !
++           END IF
++           !
++        END IF
++        !!
+      END IF
+      !
+   END IF
+@@ -399,14 +512,22 @@ SUBROUTINE extrapolate_charge( dirname,
+   USE paw_variables,        ONLY : okpaw, ddd_paw
+   USE paw_onecenter,        ONLY : PAW_potential
+   !
++  ! ...  added for PIMD calculation
++  use qe_variables,      only : flag_no_output
++
+   IMPLICIT NONE
+   !
+   INTEGER, INTENT(IN) :: rho_extr
+   CHARACTER(LEN=*), INTENT(IN) :: dirname
+   !
+   REAL(DP), ALLOCATABLE :: work(:,:), work1(:,:)
++  !! ... For 3rd,4th order extrapolation
++  REAL(DP), ALLOCATABLE :: work2(:,:), work3(:,:)
++  !!
+     ! work  is the difference between rho and atomic rho at time t
+     ! work1 is the same thing at time t-dt
++    ! work2 is the same thing at time t-2dt
++    ! work3 is the same thing at time t-3dt
+   REAL(DP) :: charge
+   !
+   INTEGER :: is
+@@ -485,6 +606,7 @@ SUBROUTINE extrapolate_charge( dirname,
+         ! ...                  density the "old" atomic charge and summing the
+         ! ...                  new one
+         !
++        if(.not.flag_no_output)   &
+         WRITE( UNIT = stdout, FMT = '(5X, &
+              & "NEW-OLD atomic charge density approx. for the potential")' )
+         !
+@@ -494,6 +616,7 @@ SUBROUTINE extrapolate_charge( dirname,
+         !
+      ELSE IF ( rho_extr == 2 ) THEN
+         !
++        if(.not.flag_no_output)   &
+         WRITE( UNIT = stdout, &
+                FMT = '(5X,"first order charge density extrapolation")' )
+         !
+@@ -513,8 +636,17 @@ SUBROUTINE extrapolate_charge( dirname,
+         !
+      ELSE IF ( rho_extr == 3 ) THEN
+         !
++        if(.not.flag_no_output) then
++          !! ... For 2nd order tx extrapolation
++          if(pot_2tx.eq.1) then
++        WRITE( UNIT = stdout, &
++               FMT = '(5X,"second order tx charge density extrapolation")' )
++          else
+         WRITE( UNIT = stdout, &
+                FMT = '(5X,"second order charge density extrapolation")' )
++          end if
++          !
++        end if 
+         !
+         ALLOCATE( work1( dfftp%nnr, 1 ) )
+         !
+@@ -528,15 +660,107 @@ SUBROUTINE extrapolate_charge( dirname,
+         !
+         ! ...   rho%of_r   ->  oldrho
+         ! ...   work  ->  oldrho2
++        ! ...   work1  ->  oldrho3
+         !
+         CALL write_rho( dirname, rho%of_r,  1, 'old' )
+         CALL write_rho( dirname, work, 1, 'old2' )
++        CALL write_rho( dirname, work1, 1, 'old3' )
+         !
++        if(pot_2tx.eq.1) then
++        !! ... For 2nd order tx extrapolation
++        rho%of_r(:,1) = rho%of_r(:,1) + (2.0d0)*( rho%of_r(:,1) - work(:,1) ) + &
++                                       (-1.0d0)*( work(:,1) - work1(:,1) )
++        else
++        !! ... For 2nd order gx extrapolation(original)
+         rho%of_r(:,1) = rho%of_r(:,1) + alpha0*( rho%of_r(:,1) - work(:,1) ) + &
+                                beta0*( work(:,1) - work1(:,1) )
++        end if
+         !
+         DEALLOCATE( work1 )
+         !
++     !! ... For 3rd,4th order extrapolation
++     ELSE IF ( rho_extr == 4 ) THEN
++        !
++        if(.not.flag_no_output)   &
++        WRITE( UNIT = stdout, &
++               FMT = '(5X,"third order charge density extrapolation")' )
++        !
++        ALLOCATE( work1( dfftp%nnr, 1 ) )
++        ALLOCATE( work2( dfftp%nnr, 1 ) )
++        !
++        work1 = 0.D0
++        work2 = 0.D0
++        !
++        ! ...   oldrho3  ->  work2
++        ! ...   oldrho2  ->  work1
++        ! ...   oldrho   ->  work
++        !
++        CALL read_rho( dirname, work2, 1, 'old3' )
++        CALL read_rho( dirname, work1, 1, 'old2' )
++        CALL read_rho( dirname, work,  1, 'old' )
++        !
++        ! ...   rho%of_r   ->  oldrho
++        ! ...   work  ->  oldrho2
++        ! ...   work1  ->  oldrho3
++        ! ...   work2  ->  oldrho4
++        !
++        CALL write_rho( dirname, rho%of_r,  1, 'old' )
++        CALL write_rho( dirname, work, 1, 'old2' )
++        CALL write_rho( dirname, work1, 1, 'old3' )
++        CALL write_rho( dirname, work2, 1, 'old4' )
++        !
++        rho%of_r(:,1) = rho%of_r(:,1) + (3.0d0)*( rho%of_r(:,1) - work(:,1) ) + &
++                                         (-3.0d0)*(  work(:,1) - work1(:,1) ) + &
++                                         (1.0d0)*( work1(:,1) - work2(:,1) ) 
++        !
++        DEALLOCATE( work1 )
++        DEALLOCATE( work2 )
++        !
++     ELSE IF ( rho_extr == 5 ) THEN
++        !
++        if(.not.flag_no_output)   &
++        WRITE( UNIT = stdout, &
++               FMT = '(5X,"fourth order charge density extrapolation")' )
++        !
++        ALLOCATE( work1( dfftp%nnr, 1 ) )
++        ALLOCATE( work2( dfftp%nnr, 1 ) )
++        ALLOCATE( work3( dfftp%nnr, 1 ) )
++        !
++        work1 = 0.D0
++        work2 = 0.D0
++        work3 = 0.D0
++        !
++        ! ...   oldrho4  ->  work3
++        ! ...   oldrho3  ->  work2
++        ! ...   oldrho2  ->  work1
++        ! ...   oldrho   ->  work
++        !
++        CALL read_rho( dirname, work3, 1, 'old4' )
++        CALL read_rho( dirname, work2, 1, 'old3' )
++        CALL read_rho( dirname, work1, 1, 'old2' )
++        CALL read_rho( dirname, work,  1, 'old' )
++        !
++        ! ...   rho%of_r   ->  oldrho
++        ! ...   work   ->  oldrho2
++        ! ...   work1  ->  oldrho3
++        ! ...   work2  ->  oldrho4
++        !
++        CALL write_rho( dirname, rho%of_r,  1, 'old' )
++        CALL write_rho( dirname, work, 1, 'old2' )
++        CALL write_rho( dirname, work1, 1, 'old3' )
++        CALL write_rho( dirname, work2, 1, 'old4' )
++        !
++        rho%of_r(:,1) = rho%of_r(:,1) + (4.0d0)*( rho%of_r(:,1) - work(:,1) ) + &
++                                         (-6.0d0)*(  work(:,1) - work1(:,1) ) + &
++                                         ( 4.0d0)*( work1(:,1) - work2(:,1) ) + &
++                                         (-1.0d0)*( work2(:,1) - work3(:,1) ) 
++        !
++        DEALLOCATE( work1 )
++        DEALLOCATE( work2 )
++        DEALLOCATE( work3 )
++        !
++
++     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      END IF
+      !
+      IF ( lmovecell ) rho%of_r(:,1) = rho%of_r(:,1) / omega
+@@ -627,7 +851,7 @@ SUBROUTINE extrapolate_wfcs( wfc_extr )
+   USE wvfct,                ONLY : nbnd, npwx
+   USE ions_base,            ONLY : nat, tau
+   USE io_files,             ONLY : nwordwfc, iunwfc, iunoldwfc, &
+-                                   iunoldwfc2, diropn
++                                   iunoldwfc2, iunoldwfc3, iunoldwfc4, diropn
+   USE buffers,              ONLY : get_buffer, save_buffer
+   USE uspp,                 ONLY : nkb, vkb, okvan
+   USE wavefunctions_module, ONLY : evc
+@@ -637,6 +861,11 @@ SUBROUTINE extrapolate_wfcs( wfc_extr )
+                                    bec_type, becp, calbec
+   USE mp_images,            ONLY : intra_image_comm
+   USE mp,                   ONLY : mp_barrier
++
++  ! ...  added for PIMD calculation
++  use qe_variables,     only : flag_no_output
++  use common_variables, only : myrank_main
++
+   !
+   IMPLICIT NONE
+   !
+@@ -660,12 +889,22 @@ SUBROUTINE extrapolate_wfcs( wfc_extr )
+     ! workspace for ZGESVD
+     ! real version of sp_m
+   LOGICAL :: exst
++
++  ! ...  added for PIMD calculation
++  character(len=1024) :: ca
++
+   !
+   CALL mp_barrier( intra_image_comm ) ! debug
+   !
+   IF ( wfc_extr == 1 ) THEN
+      !
+-     CALL diropn( iunoldwfc, 'oldwfc', 2*nwordwfc, exst )
++
++     ! ...  added for PIMD calculation
++     iunoldwfc = iunoldwfc + myrank_main 
++     write(ca,'(i0)') myrank_main
++!!!     CALL diropn( iunoldwfc, 'oldwfc', 2*nwordwfc, exst )
++     CALL diropn( iunoldwfc, 'oldwfc'//trim(ca)//'_', 2*nwordwfc, exst )
++
+      !
+      DO ik = 1, nks
+         !
+@@ -680,18 +919,64 @@ SUBROUTINE extrapolate_wfcs( wfc_extr )
+      !
+   ELSE 
+      !
+-     CALL diropn( iunoldwfc, 'oldwfc', 2*nwordwfc, exst )
+-     IF ( wfc_extr > 2 .OR. wfc_order > 2 ) &
+-        CALL diropn( iunoldwfc2, 'old2wfc', 2*nwordwfc, exst )
++
++     ! ...  added for PIMD calculation
++     iunoldwfc = iunoldwfc + myrank_main 
++     write(ca,'(i0)') myrank_main
++!!!     CALL diropn( iunoldwfc, 'oldwfc', 2*nwordwfc, exst )
++     CALL diropn( iunoldwfc, 'oldwfc'//trim(ca)//'_', 2*nwordwfc, exst )
++
++     ! ...  added for PIMD calculation
++!!!     IF ( wfc_extr > 2 .OR. wfc_order > 2 ) &
++!!!        CALL diropn( iunoldwfc2, 'old2wfc', 2*nwordwfc, exst )
++     IF ( wfc_extr > 2 .OR. wfc_order > 2 ) then
++       iunoldwfc2 = iunoldwfc2 + myrank_main 
++       write(ca,'(i0)') myrank_main
++       CALL diropn( iunoldwfc2, 'old2wfc'//trim(ca)//'_', 2*nwordwfc, exst )
++     END IF
++
++     !! ... For 3rd,4th order extrapolation
++     IF ( wfc_extr > 3 .OR. wfc_order > 3 ) then
++       iunoldwfc3 = iunoldwfc3 + myrank_main 
++       write(ca,'(i0)') myrank_main
++       CALL diropn( iunoldwfc3, 'old3wfc'//trim(ca)//'_', 2*nwordwfc, exst )
++     END IF
++     IF ( wfc_extr > 4 .OR. wfc_order > 4 ) then
++       iunoldwfc4 = iunoldwfc4 + myrank_main 
++       write(ca,'(i0)') myrank_main
++       CALL diropn( iunoldwfc4, 'old4wfc'//trim(ca)//'_', 2*nwordwfc, exst )
++     END IF
++     !!
+      !
+      IF ( wfc_extr == 2 ) THEN
+         !
++        if(.not.flag_no_output) &
+         WRITE( stdout, '(/5X,"first order wave-functions extrapolation")' )
+         !
+-     ELSE
++     ELSE  IF( wfc_extr == 3 .OR. wfc_order == 3 ) then
+         !
++        if(.not.flag_no_output) then
++          !! ... For 2nd order tx extrapolation
++          if(wfc_2tx.eq.1) then
++        WRITE( stdout, '(/5X,"second order tx wave-functions extrapolation")' )
++          else
+         WRITE( stdout, '(/5X,"second order wave-functions extrapolation")' )
++          end if
++        !
++        end if
++        !
++     !! ... For 3rd,4th order extrapolation
++     ELSE  IF( wfc_extr == 4 .OR. wfc_order == 4 ) then
+         !
++        if(.not.flag_no_output) &
++        WRITE( stdout, '(/5X,"third order wave-functions extrapolation")' )
++        !
++     ELSE  IF( wfc_extr == 5 .OR. wfc_order == 5 ) then
++        !
++        if(.not.flag_no_output) &
++        WRITE( stdout, '(/5X,"fourth order wave-functions extrapolation")' )
++        !
++     !! 
+      END IF
+      !
+      ALLOCATE( evcold( npwx*npol, nbnd ), aux( npwx*npol, nbnd ) )
+@@ -788,7 +1073,20 @@ SUBROUTINE extrapolate_wfcs( wfc_extr )
+         ! ... for first-order interpolation, alpha0=1, beta0=0
+         !
+         IF ( wfc_extr == 3 ) THEN
++        !
++          if(pot_2tx.eq.1) then
++          !! ... For 2nd order tx extrapolation
++           evc = ( 1.0_dp + 2.0d0 ) * evc + ( -1.0d0 - 2.0d0 ) * aux
++          else
++          !! ... For 2nd order gx extrapolation(original)
+            evc = ( 1.0_dp + alpha0 ) * evc + ( beta0 - alpha0 ) * aux
++          end if
++        !! ... For 3rd,4th order extrapolation
++        ELSE IF( wfc_extr == 4 ) then
++           evc = ( 1.0_dp + 3.0d0 ) * evc + ( -3.0d0 - 3.0d0 ) * aux
++        ELSE IF( wfc_extr == 5 ) then
++           evc = ( 1.0_dp + 4.0d0 ) * evc + ( -6.0d0 - 4.0d0 ) * aux
++        !!
+         ELSE
+            evc = 2.0_dp * evc - aux
+         END IF
+@@ -798,20 +1096,81 @@ SUBROUTINE extrapolate_wfcs( wfc_extr )
+            ! ... second-order interpolation:
+            ! ... read wavefcts at (t-2dt), save aligned wavefcts at (t-dt)
+            !
+-           IF ( wfc_extr == 3 ) &
++           !! ... For 3rd,4th order extrapolation
++!!!           IF ( wfc_extr == 3 ) &
++           IF ( wfc_extr >= 3 ) &
+                CALL davcio( evcold, 2*nwordwfc, iunoldwfc2, ik, -1 )
+            !
+            CALL davcio(    aux, 2*nwordwfc, iunoldwfc2, ik, +1 )
+            !
+-           IF ( wfc_extr ==3 ) THEN
++           !! ... For 3rd,4th order extrapolation
++!!!           IF ( wfc_extr ==3 ) THEN
++           IF ( wfc_extr >=3 ) THEN
+               !
+               ! ... align wfcs at (t-2dt), add to interpolation formula 
+               !
+               CALL ZGEMM( 'N', 'C', npw, nbnd, nbnd, ONE, &
+                           evcold, npwx, sp_m, nbnd, ZERO, aux, npwx )
+               !
+-              evc = evc - beta0 * aux
++              !! ... For 3rd,4th order extrapolation
++!!!              evc = evc - beta0 * aux
++              IF( wfc_extr == 3 ) THEN
++                if(pot_2tx.eq.1) then
++                !! ... For 2nd order tx extrapolation
++                 evc = evc - (-1.0d0) * aux
++                else
++                !! ... For 2nd order gx extrapolation
++                 evc = evc - beta0 * aux
++                end if
++              ELSE IF( wfc_extr == 4 ) THEN
++                 evc = evc + 4.0d0 * aux
++              ELSE IF( wfc_extr == 5 ) THEN
++                 evc = evc + 10.0d0 * aux
++              END IF
+               !
++              !! ... For 3rd,4th order extrapolation
++              IF ( wfc_order > 3 ) THEN
++                 !
++                 ! ... third-order interpolation:
++                 ! ... read wavefcts at (t-3dt), save aligned wavefcts at (t-2dt)
++                 !
++                 IF (wfc_extr >= 4 ) &
++                 CALL davcio( evcold, 2*nwordwfc, iunoldwfc3, ik, -1 )
++                 !
++                 CALL davcio(    aux, 2*nwordwfc, iunoldwfc3, ik, +1 )
++                 !
++                 ! ... align wfcs at (t-3dt), add to interpolation formula 
++                 !
++                 CALL ZGEMM( 'N', 'C', npw, nbnd, nbnd, ONE, &
++                             evcold, npwx, sp_m, nbnd, ZERO, aux, npwx )
++                 !
++                 IF( wfc_extr == 4 ) THEN
++                    evc = evc - 1.0d0 * aux
++                 ELSE IF( wfc_extr == 5 ) THEN
++                    evc = evc - 5.0d0 * aux
++                 END IF
++                 !
++                 IF ( wfc_order == 5 ) THEN
++                    !
++                    ! ... fourth-order interpolation:
++                    ! ... read wavefcts at (t-4dt), save aligned wavefcts at (t-3dt)
++                    !
++                    IF (wfc_extr >= 5 ) &
++                    CALL davcio( evcold, 2*nwordwfc, iunoldwfc4, ik, -1 )
++                    !
++                    CALL davcio(    aux, 2*nwordwfc, iunoldwfc4, ik, +1 )
++                    !
++                    ! ... align wfcs at (t-4dt), add to interpolation formula 
++                    !
++                    CALL ZGEMM( 'N', 'C', npw, nbnd, nbnd, ONE, &
++                                evcold, npwx, sp_m, nbnd, ZERO, aux, npwx )
++                    !
++                    evc = evc + 1.0d0 * aux
++                    !
++                 END IF
++                 !
++              END IF
++              !!
+            END IF
+            !
+         END IF
+@@ -834,6 +1193,12 @@ SUBROUTINE extrapolate_wfcs( wfc_extr )
+      CLOSE( UNIT = iunoldwfc, STATUS = 'KEEP' )
+      IF ( wfc_extr > 2 .OR. wfc_order > 2 ) &
+         CLOSE( UNIT = iunoldwfc2, STATUS = 'KEEP' )
++     !! ... For 3rd,4th order extrapolation
++     IF ( wfc_extr > 3 .OR. wfc_order > 3 ) &
++        CLOSE( UNIT = iunoldwfc3, STATUS = 'KEEP' )
++     IF ( wfc_extr > 4 .OR. wfc_order > 4 ) &
++        CLOSE( UNIT = iunoldwfc4, STATUS = 'KEEP' )
++     !!
+      !
+   END IF
+   !
+diff -Nrup q-e-qe-6.2.1.original/PW/src/wfcinit.f90 q-e-qe-6.2.1/PW/src/wfcinit.f90
+--- q-e-qe-6.2.1.original/PW/src/wfcinit.f90	2020-01-16 21:30:27.000000000 +0900
++++ q-e-qe-6.2.1/PW/src/wfcinit.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -38,6 +38,10 @@ SUBROUTINE wfcinit()
+   USE mp,                   ONLY : mp_bcast
+   USE qes_types_module,            ONLY : output_type
+   USE qes_libs_module,             ONLY : qes_reset_output
++
++  ! ...  added for PIMD calculation
++  use common_variables, only : myrank_main
++
+   !
+   IMPLICIT NONE
+   !
+@@ -47,6 +51,10 @@ SUBROUTINE wfcinit()
+ #if !defined (__OLDXML) 
+   TYPE ( output_type )                    :: output_obj
+ #endif 
++
++  ! ...  added for PIMD calculation
++  character(len=1024) :: ca
++
+   !
+   !
+   !
+@@ -60,7 +68,13 @@ SUBROUTINE wfcinit()
+   ! ... open files/buffer for wavefunctions (nwordwfc set in openfil)
+   ! ... io_level > 1 : open file, otherwise: open buffer
+   !
+-  CALL open_buffer( iunwfc, 'wfc', nwordwfc, io_level, exst_mem, exst_file )
++
++  ! ...  added for PIMD calculation
++  iunwfc = iunwfc + myrank_main 
++  write(ca,'(i0)') myrank_main
++!!!  CALL open_buffer( iunwfc, 'wfc', nwordwfc, io_level, exst_mem, exst_file )
++  CALL open_buffer( iunwfc, 'wfc'//trim(ca)//'_', nwordwfc, io_level, exst_mem, exst_file )
++
+   !
+   ! ... now the various possible wavefunction initializations
+   ! ... first a check: is "tmp_dir"/"prefix".wfc found on disk?
+diff -Nrup q-e-qe-6.2.1.original/UtilXlib/util_param.f90 q-e-qe-6.2.1/UtilXlib/util_param.f90
+--- q-e-qe-6.2.1.original/UtilXlib/util_param.f90	2020-01-16 21:30:28.000000000 +0900
++++ q-e-qe-6.2.1/UtilXlib/util_param.f90	2020-01-31 00:43:50.000000000 +0900
+@@ -15,9 +15,12 @@ MODULE util_param
+   INCLUDE 'mpif.h'
+ #endif
+ #endif
+-  
++ 
+   INTEGER, PARAMETER :: DP = selected_real_kind(14,200)
+-  INTEGER, PARAMETER :: stdout = 6    ! unit connected to standard output
++!
++!!!  INTEGER, PARAMETER :: stdout = 6   ! unit connected to standard output
++  INTEGER :: stdout = 6666 !6   ! unit connected to standard output
++!
+   CHARACTER(LEN=5 ), PARAMETER :: crash_file  = 'CRASH'
+ 
+ END MODULE util_param
+diff -Nrup q-e-qe-6.2.1.original/Modules/qes_libs.f90 q-e-qe-6.2.1/Modules/qes_libs.f90
++++ q-e-qe-6.2.1/Modules/qes_libs.f90	2025-10-26 14:43:58.802970127 +0900
+@@ -2835,11 +2835,27 @@
+    LOGICAL  :: tot_charge_ispresent
+    REAL(DP) :: tot_charge
+    LOGICAL  :: tot_magnetization_ispresent
+-   REAL(DP) :: tot_magnetization
++   REAL(DP), OPTIONAL :: tot_magnetization
+    TYPE(occupations_type) :: occupations
+    LOGICAL  :: inputOccupations_ispresent
+    INTEGER  :: ndim_inputOccupations
+    TYPE(inputOccupations_type ), DIMENSION( ndim_inputOccupations )  :: inputOccupations
++   INTEGER  :: nspin_local
++   EXTERNAL :: errore
++
++   nspin_local = 1
++   IF (occupations%spin_ispresent) THEN
++      nspin_local = occupations%spin
++   END IF
++
++   IF (nbnd_ispresent .AND. nbnd <= 0) THEN
++      CALL errore('qes_init_bands','invalid band/spin dimensions',1)
++      RETURN
++   END IF
++   IF (nspin_local < 1 .OR. nspin_local > 2) THEN
++      CALL errore('qes_init_bands','invalid band/spin dimensions',1)
++      RETURN
++   END IF
+ 
+    obj%tagname = TRIM(tagname)
+    obj%lwrite   = .TRUE.
+@@ -2858,7 +2874,12 @@
+    ENDIF
+    obj%tot_magnetization_ispresent = tot_magnetization_ispresent
+    IF(obj%tot_magnetization_ispresent) THEN
+-      obj%tot_magnetization = tot_magnetization
++      IF (PRESENT(tot_magnetization)) THEN
++         obj%tot_magnetization = tot_magnetization
++      ELSE
++         CALL errore('qes_init_bands','missing tot_magnetization value',1)
++         RETURN
++      END IF
+    ENDIF
+    obj%occupations = occupations
+    obj%inputOccupations_ispresent = inputOccupations_ispresent
+diff -Nrup q-e-qe-6.2.1.original/Modules/qexsd_input.f90 q-e-qe-6.2.1/Modules/qexsd_input.f90
++++ q-e-qe-6.2.1/Modules/qexsd_input.f90	2025-10-26 14:38:39.268742028 +0900
+@@ -181,13 +181,23 @@
+      inpOcc_size = 0
+   END IF
+   !
+-  IF (PRESENT ( tot_mag)) tot_mag_ispresent = .TRUE.
+-        
+-  CALL qes_init_bands(obj,TAGNAME,NBND_ISPRESENT=(nbnd .GT. 0), NBND = nbnd, SMEARING_ISPRESENT = smearing_obj%lread,&
+-                      SMEARING = smearing_obj, TOT_CHARGE_ISPRESENT=.TRUE., TOT_CHARGE = tot_charge,                 &
+-                      TOT_MAGNETIZATION_ISPRESENT = tot_mag_ispresent, TOT_MAGNETIZATION = tot_mag,                  & 
++  IF (PRESENT ( tot_mag)) THEN
++     tot_mag_ispresent = .TRUE.
++  END IF
++
++  IF (tot_mag_ispresent) THEN
++     CALL qes_init_bands(obj,TAGNAME,NBND_ISPRESENT=(nbnd .GT. 0), NBND = nbnd, SMEARING_ISPRESENT = smearing_obj%lread, &
++                      SMEARING = smearing_obj, TOT_CHARGE_ISPRESENT=.TRUE., TOT_CHARGE = tot_charge,                  &
++                      TOT_MAGNETIZATION_ISPRESENT = tot_mag_ispresent, TOT_MAGNETIZATION = tot_mag,                   &
++                      OCCUPATIONS=occup_obj, INPUTOCCUPATIONS_ISPRESENT=inp_occ_arepresent,                           &
++                      NDIM_INPUTOCCUPATIONS= inpOcc_size, INPUTOCCUPATIONS = inpOcc_objs)
++  ELSE
++     CALL qes_init_bands(obj,TAGNAME,NBND_ISPRESENT=(nbnd .GT. 0), NBND = nbnd, SMEARING_ISPRESENT = smearing_obj%lread, &
++                      SMEARING = smearing_obj, TOT_CHARGE_ISPRESENT=.TRUE., TOT_CHARGE = tot_charge,                  &
++                      TOT_MAGNETIZATION_ISPRESENT = tot_mag_ispresent,                                               &
+                       OCCUPATIONS=occup_obj, INPUTOCCUPATIONS_ISPRESENT=inp_occ_arepresent,                          &
+                       NDIM_INPUTOCCUPATIONS= inpOcc_size, INPUTOCCUPATIONS = inpOcc_objs)
++  END IF
+   CALL qes_reset_smearing(smearing_obj)
+   CALL qes_reset_occupations(occup_obj)
+   IF (inp_occ_arepresent) THEN
