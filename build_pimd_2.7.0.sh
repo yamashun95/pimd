@@ -6,8 +6,14 @@ set -euo pipefail
 # === 基本設定 ===
 WORK_DIR="$(pwd)"
 SCRIPT_WORK_DIR="${WORK_DIR}"
-ARCHIVE_GZ="${WORK_DIR}/pimd.2.7.0.r2.tar.gz"
-ARCHIVE_TAR="${WORK_DIR}/pimd.2.7.0.r2.tar"
+USER_ARCHIVE_PATH="${PIMD_ARCHIVE:-${PIMD_TAR:-}}"
+USER_QE_VERSION="${PIMD_QE_VERSION:-}"
+USER_LEGACY_MAKEFILE="${PIMD_LEGACY_MAKEFILE:-}"
+USER_LEGACY_FCMP="${PIMD_LEGACY_FCMP:-}"
+USER_LEGACY_CC="${PIMD_LEGACY_CC:-}"
+FORCED_BUILD_MODE=""
+ARCHIVE_GZ=""
+ARCHIVE_TAR=""
 BUILD_DIR="${WORK_DIR}/build"
 MAKE_JOBS="${MAKE_JOBS:-$(nproc)}"
 
@@ -47,6 +53,11 @@ Env overrides:
   MAKE_JOBS=$(nproc)
   AR_BIN=</path/to/llvm-ar>      RANLIB_BIN=</path/to/llvm-ranlib>
   EIGEN_INCLUDE=/usr/include/eigen3
+  PIMD_ARCHIVE=/path/to/pimd.2.7.0.r2.tar.gz
+  PIMD_QE_VERSION=6.3
+  PIMD_LEGACY_MAKEFILE=makefiles/makefile.aenet.icex
+  PIMD_LEGACY_FCMP=mpiifx
+  PIMD_LEGACY_CC=icx
   AENET_SRC=/path/to/aenet-2.0.3 (directory)
   AENET_TAR=/path/to/aenet-2.0.3.tar.bz2
   AENET_MAKEFILE=makefiles/Makefile.ifort_mpi
@@ -63,6 +74,13 @@ Steps performed:
 Options:
   --clean        Remove ./build and re-extract sources
   --debug        Enable shell tracing
+  --tar <path>   Explicit PIMD source archive (.tar or .tar.gz)
+  --qe-version <ver>  Override QE version used for downloads
+  --legacy       Force legacy makefile-based build even if CMake is available
+  --cmake        Force CMake-based build
+  --legacy-makefile <path>  Override makefile used for legacy build
+  --legacy-fcmp <compiler>  Override FCMP for legacy make build
+  --legacy-cc <compiler>    Override CC for legacy make build
   --aenet        Enable AENET build (requires AENET_SRC or AENET_TAR)
   --aenet-src    Path to extracted aenet-2.0.3 sources (implies --aenet)
   --aenet-tar    Path to aenet-2.0.3.tar.bz2 archive (implies --aenet)
@@ -165,6 +183,147 @@ build_aenet_components() {
   popd >/dev/null
 }
 
+abs_path() {
+  python - "$1" <<'PY'
+import os
+import sys
+print(os.path.abspath(sys.argv[1]))
+PY
+}
+
+detect_archive_paths() {
+  if [[ -n "${USER_ARCHIVE_PATH}" ]]; then
+    local resolved
+    resolved="$(abs_path "${USER_ARCHIVE_PATH}")"
+    [[ -f "${resolved}" ]] || { echo "ERROR: Specified archive ${USER_ARCHIVE_PATH} not found" >&2; exit 1; }
+    if [[ "${resolved}" == *.tar.gz ]]; then
+      ARCHIVE_GZ="${resolved}"
+      ARCHIVE_TAR="${resolved%.gz}"
+    elif [[ "${resolved}" == *.tar ]]; then
+      ARCHIVE_TAR="${resolved}"
+      local gz_candidate="${resolved}.gz"
+      [[ -f "${gz_candidate}" ]] && ARCHIVE_GZ="${gz_candidate}"
+    else
+      echo "ERROR: Unsupported archive extension for ${resolved}" >&2
+      exit 1
+    fi
+    return
+  fi
+
+  local -a gz_candidates=()
+  local -a tar_candidates=()
+
+  mapfile -t gz_candidates < <(find "${WORK_DIR}" -maxdepth 1 -type f -name 'pimd*.tar.gz' -printf '%p\n' | sort)
+  if (( ${#gz_candidates[@]} == 1 )); then
+    ARCHIVE_GZ="${gz_candidates[0]}"
+    ARCHIVE_TAR="${ARCHIVE_GZ%.gz}"
+    return
+  elif (( ${#gz_candidates[@]} > 1 )); then
+    for candidate in "${gz_candidates[@]}"; do
+      if [[ "$(basename "${candidate}")" == "pimd.2.7.0.r2.tar.gz" ]]; then
+        ARCHIVE_GZ="${candidate}"
+        ARCHIVE_TAR="${ARCHIVE_GZ%.gz}"
+        return
+      fi
+    done
+    echo "ERROR: Multiple pimd*.tar.gz archives found. Specify one with --tar." >&2
+    for candidate in "${gz_candidates[@]}"; do
+      echo "  $(basename "${candidate}")" >&2
+    done
+    exit 1
+  fi
+
+  mapfile -t tar_candidates < <(find "${WORK_DIR}" -maxdepth 1 -type f -name 'pimd*.tar' ! -name '*.tar.gz' -printf '%p\n' | sort)
+  if (( ${#tar_candidates[@]} == 1 )); then
+    ARCHIVE_TAR="${tar_candidates[0]}"
+    local gz_candidate="${ARCHIVE_TAR}.gz"
+    [[ -f "${gz_candidate}" ]] && ARCHIVE_GZ="${gz_candidate}"
+    return
+  elif (( ${#tar_candidates[@]} > 1 )); then
+    echo "ERROR: Multiple pimd*.tar archives found. Specify one with --tar." >&2
+    for candidate in "${tar_candidates[@]}"; do
+      echo "  $(basename "${candidate}")" >&2
+    done
+    exit 1
+  fi
+
+  echo "ERROR: No pimd*.tar[.gz] archive located under ${WORK_DIR}" >&2
+  echo "       Provide one via --tar or set PIMD_ARCHIVE." >&2
+  exit 1
+}
+
+tar_topdir() {
+  local archive="$1"
+  python - "$archive" <<'PY'
+import sys, tarfile
+archive = sys.argv[1]
+with tarfile.open(archive) as tf:
+    for member in tf.getmembers():
+        name = member.name.split('/', 1)[0]
+        if name:
+            print(name)
+            break
+PY
+}
+
+detect_legacy_qe_version() {
+  local src_dir="$1"
+  local override="$2"
+  if [[ -n "${override}" ]]; then
+    echo "${override}"
+    return 0
+  fi
+  local patch_script="${src_dir}/lib/qe/apply_patch_qe.sh"
+  if [[ -f "${patch_script}" ]]; then
+    local detected
+    detected="$(python - "$patch_script" <<'PY'
+import os
+import re
+import sys
+path = sys.argv[1]
+with open(path, 'r', encoding='utf-8', errors='ignore') as fh:
+    data = fh.read()
+match = re.search(r'q-e-qe-([0-9A-Za-z_.-]+)', data)
+if match:
+    print(match.group(1))
+PY
+)"
+    if [[ -n "${detected}" ]]; then
+      echo "${detected}"
+      return 0
+    fi
+  fi
+  echo "6.2.1"
+}
+
+prepare_legacy_qe() {
+  local src_dir="$1"
+  local version="$2"
+  local qe_dir="${src_dir}/lib/qe"
+  local archive="${qe_dir}/qe-${version}.zip"
+  local url="https://github.com/QEF/q-e/archive/refs/tags/qe-${version}.zip"
+
+  [[ -d "${qe_dir}" ]] || return 0
+
+  mkdir -p "${qe_dir}"
+  if [[ ! -f "${archive}" ]]; then
+    echo "==> Downloading QE ${version} archive"
+    curl -L -o "${archive}" "${url}"
+  fi
+
+  local extracted="${qe_dir}/q-e-qe-${version}"
+  if [[ ! -d "${extracted}" ]]; then
+    command -v unzip >/dev/null 2>&1 || { echo "ERROR: unzip command not found but required for legacy QE preparation" >&2; exit 1; }
+    echo "==> Unpacking QE ${version}"
+    unzip -q "${archive}" -d "${qe_dir}"
+  fi
+
+  if [[ -x "${qe_dir}/apply_patch_qe.sh" ]]; then
+    echo "==> Applying QE patches"
+    ( cd "${qe_dir}" && ./apply_patch_qe.sh )
+  fi
+}
+
 CLEAN=0
 DEBUG=0
 while (( $# )); do
@@ -172,6 +331,71 @@ while (( $# )); do
     -h|--help) usage ;;
     --clean) CLEAN=1; shift; continue ;;
     --debug) DEBUG=1; shift; continue ;;
+    --tar)
+      (( $# >= 2 )) || { echo "ERROR: --tar requires a path argument" >&2; exit 1; }
+      USER_ARCHIVE_PATH="$2"
+      shift 2
+      continue
+      ;;
+    --tar=*)
+      USER_ARCHIVE_PATH="${1#*=}"
+      shift
+      continue
+      ;;
+    --qe-version)
+      (( $# >= 2 )) || { echo "ERROR: --qe-version requires a value" >&2; exit 1; }
+      USER_QE_VERSION="$2"
+      shift 2
+      continue
+      ;;
+    --qe-version=*)
+      USER_QE_VERSION="${1#*=}"
+      shift
+      continue
+      ;;
+    --legacy)
+      FORCED_BUILD_MODE="legacy"
+      shift
+      continue
+      ;;
+    --cmake)
+      FORCED_BUILD_MODE="cmake"
+      shift
+      continue
+      ;;
+    --legacy-makefile)
+      (( $# >= 2 )) || { echo "ERROR: --legacy-makefile requires a path argument" >&2; exit 1; }
+      USER_LEGACY_MAKEFILE="$2"
+      shift 2
+      continue
+      ;;
+    --legacy-makefile=*)
+      USER_LEGACY_MAKEFILE="${1#*=}"
+      shift
+      continue
+      ;;
+    --legacy-fcmp)
+      (( $# >= 2 )) || { echo "ERROR: --legacy-fcmp requires a compiler argument" >&2; exit 1; }
+      USER_LEGACY_FCMP="$2"
+      shift 2
+      continue
+      ;;
+    --legacy-fcmp=*)
+      USER_LEGACY_FCMP="${1#*=}"
+      shift
+      continue
+      ;;
+    --legacy-cc)
+      (( $# >= 2 )) || { echo "ERROR: --legacy-cc requires a compiler argument" >&2; exit 1; }
+      USER_LEGACY_CC="$2"
+      shift 2
+      continue
+      ;;
+    --legacy-cc=*)
+      USER_LEGACY_CC="${1#*=}"
+      shift
+      continue
+      ;;
     --aenet) AENET_ENABLE=1; shift; continue ;;
     --aenet-src)
       (( $# >= 2 )) || { echo "ERROR: --aenet-src requires a path argument" >&2; exit 1; }
@@ -225,13 +449,30 @@ fi
 
 if (( DEBUG == 1 )); then set -x; fi
 
+detect_archive_paths
+if [[ -z "${ARCHIVE_TAR}" && -n "${ARCHIVE_GZ}" ]]; then
+  ARCHIVE_TAR="${ARCHIVE_GZ%.gz}"
+fi
+[[ -n "${ARCHIVE_TAR}" ]] || { echo "ERROR: Internal error - archive tar path unresolved" >&2; exit 1; }
+ARCHIVE_LABEL="$(basename "${ARCHIVE_TAR}")"
+
+if [[ -n "${FORCED_BUILD_MODE}" ]]; then
+  case "${FORCED_BUILD_MODE}" in
+    cmake|legacy) ;;
+    *) echo "ERROR: Unknown build mode ${FORCED_BUILD_MODE}; use --cmake or --legacy" >&2; exit 1 ;;
+  esac
+fi
+
 # === 準備 ===
-[[ -f "${ARCHIVE_GZ}" ]] || { echo "ERROR: ${ARCHIVE_GZ} not found"; exit 1; }
+if [[ -n "${ARCHIVE_GZ}" && ! -f "${ARCHIVE_GZ}" ]]; then
+  echo "ERROR: ${ARCHIVE_GZ} not found" >&2
+  exit 1
+fi
 
 if (( CLEAN == 1 )); then
   rm -rf "${BUILD_DIR}"
   if [[ -f "${ARCHIVE_TAR}" ]]; then
-    TOPDIR="$(tar -tf "${ARCHIVE_TAR}" | head -1 | cut -d/ -f1)"
+    TOPDIR="$(tar_topdir "${ARCHIVE_TAR}")"
     [[ -n "${TOPDIR}" && -d "${WORK_DIR}/${TOPDIR}" ]] && rm -rf "${WORK_DIR:?}/${TOPDIR}"
   fi
 fi
@@ -240,8 +481,13 @@ mkdir -p "${BUILD_DIR}"
 
 # === 展開（.tar が無ければ .gz を解凍）===
 if [[ ! -f "${ARCHIVE_TAR}" ]]; then
-  echo "==> Ungzipping ${ARCHIVE_GZ}"
-  gzip -dk "${ARCHIVE_GZ}"
+  if [[ -n "${ARCHIVE_GZ}" && -f "${ARCHIVE_GZ}" ]]; then
+    echo "==> Ungzipping ${ARCHIVE_GZ}"
+    gzip -dk "${ARCHIVE_GZ}"
+  else
+    echo "ERROR: ${ARCHIVE_TAR} not found and no corresponding .tar.gz available" >&2
+    exit 1
+  fi
 fi
 
 # tar のトップディレクトリ名を検出 (Python を利用して SIGPIPE を回避)
@@ -272,6 +518,21 @@ else
   SRC_DIR="${WORK_DIR}/${TOPDIR}"
 fi
 echo "==> Source tree: ${SRC_DIR}"
+
+if [[ -n "${FORCED_BUILD_MODE}" ]]; then
+  BUILD_MODE="${FORCED_BUILD_MODE}"
+else
+  if [[ -f "${SRC_DIR}/CMakeLists.txt" ]]; then
+    BUILD_MODE="cmake"
+  else
+    BUILD_MODE="legacy"
+  fi
+fi
+echo "==> Build mode: ${BUILD_MODE}"
+case "${BUILD_MODE}" in
+  cmake|legacy) ;;
+  *) echo "ERROR: Unsupported build mode ${BUILD_MODE}" >&2; exit 1 ;;
+esac
 
 if (( AENET_ENABLE )); then
   echo "==> Preparing AENET sources"
@@ -346,8 +607,13 @@ fi
 N2P2_ROOT="${SRC_DIR}/lib/n2p2"
 N2P2_MOD="${N2P2_ROOT}/n2p2-2.2.0.modified"
 QE_DIR="${SRC_DIR}/lib/qe"
-QE_ARCHIVE="${QE_DIR}/qe-6.3.zip"
-QE_URL="https://github.com/QEF/q-e/archive/refs/tags/qe-6.3.zip"
+if [[ "${BUILD_MODE}" == "cmake" ]]; then
+  QE_VERSION="${USER_QE_VERSION:-6.3}"
+else
+  QE_VERSION="$(detect_legacy_qe_version "${SRC_DIR}" "${USER_QE_VERSION}")"
+fi
+QE_ARCHIVE="${QE_DIR}/qe-${QE_VERSION}.zip"
+QE_URL="https://github.com/QEF/q-e/archive/refs/tags/qe-${QE_VERSION}.zip"
 
 # === oneAPI 環境 ===
 set +u
@@ -420,6 +686,8 @@ export CC_SERIAL=icx
 [[ -n "${AR_BIN}" ]] && export AR="${AR_BIN}"
 export ARFLAGS=rcs
 [[ -n "${RANLIB_BIN}" ]] && export RANLIB="${RANLIB_BIN}"
+: "${AR:=}"
+: "${RANLIB:=}"
 export CFLAGS="${CFLAGS:-} -include math.h"
 
 echo "==> Toolchain:"
@@ -435,97 +703,160 @@ if (( AENET_ENABLE )); then
 fi
 
 # === n2p2 の用意 ===
-echo "==> Preparing n2p2"
-[[ -d "${N2P2_ROOT}" ]] || { echo "ERROR: ${N2P2_ROOT} not found in source tree"; exit 1; }
+CMAKE_ENABLE_N2P2=0
+if [[ "${BUILD_MODE}" == "cmake" ]]; then
+  if [[ -d "${N2P2_ROOT}" ]]; then
+    echo "==> Preparing n2p2"
+    if [[ ! -d "${N2P2_MOD}" ]]; then
+      echo "==> Running getandapply_patch.sh"
+      [[ -x "${N2P2_ROOT}/getandapply_patch.sh" ]] || chmod +x "${N2P2_ROOT}/getandapply_patch.sh"
+      if ( cd "${N2P2_ROOT}" && ./getandapply_patch.sh ); then
+        :
+      else
+        echo "WARNING: getandapply_patch.sh failed; continuing without n2p2" >&2
+      fi
+    fi
 
-if [[ ! -d "${N2P2_MOD}" ]]; then
-  echo "==> Running getandapply_patch.sh"
-  [[ -x "${N2P2_ROOT}/getandapply_patch.sh" ]] || chmod +x "${N2P2_ROOT}/getandapply_patch.sh"
-  ( cd "${N2P2_ROOT}" && ./getandapply_patch.sh )
+    if [[ -d "${N2P2_MOD}" ]]; then
+      echo "==> Building n2p2 static libraries"
+      pushd "${N2P2_MOD}" >/dev/null
+      make -C ./src/libnnp clean || true
+      make -C ./src/libnnp COMP=intel PROJECT_CC=icpx PROJECT_MPICC=mpiicx \
+        ${AR:+PROJECT_AR="${AR}"} ${RANLIB:+PROJECT_RANLIB="${RANLIB}"} \
+        PROJECT_CFLAGS="-O3 -march=native -std=c++11"
+
+      make -C ./src/libnnptrain clean || true
+      make -C ./src/libnnptrain COMP=intel PROJECT_CC=icpx PROJECT_MPICC=mpiicx \
+        ${AR:+PROJECT_AR="${AR}"} ${RANLIB:+PROJECT_RANLIB="${RANLIB}"} \
+        PROJECT_CFLAGS="-O3 -march=native -std=c++11"
+
+      make -C ./src/libnnpif clean || true
+      make -C ./src/libnnpif COMP=intel PROJECT_CC=icpx PROJECT_MPICC=mpiicx \
+        ${AR:+PROJECT_AR="${AR}"} ${RANLIB:+PROJECT_RANLIB="${RANLIB}"} \
+        PROJECT_CFLAGS="-O3 -march=native -std=c++11"
+
+      mkdir -p "${SRC_DIR}/lib"
+      cp ./lib/libnnp*.a "${SRC_DIR}/lib/" || true
+      popd >/dev/null
+      CMAKE_ENABLE_N2P2=1
+    else
+      echo "==> n2p2 patched sources missing; skipping n2p2 build"
+    fi
+  else
+    echo "==> n2p2 sources not found; skipping n2p2 build"
+  fi
 fi
 
-echo "==> Building n2p2 static libraries"
-pushd "${N2P2_MOD}" >/dev/null
-make -C ./src/libnnp clean || true
-make -C ./src/libnnp COMP=intel PROJECT_CC=icpx PROJECT_MPICC=mpiicx \
-  ${AR:+PROJECT_AR="${AR}"} ${RANLIB:+PROJECT_RANLIB="${RANLIB}"} \
-  PROJECT_CFLAGS="-O3 -march=native -std=c++11"
-
-make -C ./src/libnnptrain clean || true
-make -C ./src/libnnptrain COMP=intel PROJECT_CC=icpx PROJECT_MPICC=mpiicx \
-  ${AR:+PROJECT_AR="${AR}"} ${RANLIB:+PROJECT_RANLIB="${RANLIB}"} \
-  PROJECT_CFLAGS="-O3 -march=native -std=c++11"
-
-make -C ./src/libnnpif clean || true
-make -C ./src/libnnpif COMP=intel PROJECT_CC=icpx PROJECT_MPICC=mpiicx \
-  ${AR:+PROJECT_AR="${AR}"} ${RANLIB:+PROJECT_RANLIB="${RANLIB}"} \
-  PROJECT_CFLAGS="-O3 -march=native -std=c++11"
-
-mkdir -p "${SRC_DIR}/lib"
-cp ./lib/libnnp*.a "${SRC_DIR}/lib/" || true
-popd >/dev/null
-
 # === QE アーカイブの用意 ===
-echo "==> Ensuring QE 6.3 archive"
-mkdir -p "${QE_DIR}"
-if [[ ! -f "${QE_ARCHIVE}" ]]; then
-  curl -L -o "${QE_ARCHIVE}" "${QE_URL}"
+if [[ "${BUILD_MODE}" == "cmake" ]]; then
+  echo "==> Ensuring QE ${QE_VERSION} archive"
+  mkdir -p "${QE_DIR}"
+  if [[ ! -f "${QE_ARCHIVE}" ]]; then
+    curl -L -o "${QE_ARCHIVE}" "${QE_URL}"
+  fi
+else
+  prepare_legacy_qe "${SRC_DIR}" "${QE_VERSION}"
 fi
 
 # === CMake 構成・ビルド ===
-echo "==> Configuring CMake"
-rm -rf "${BUILD_DIR}"
-mkdir -p "${BUILD_DIR}"
+if [[ "${BUILD_MODE}" == "cmake" ]]; then
+  echo "==> Configuring CMake"
+  rm -rf "${BUILD_DIR}"
+  mkdir -p "${BUILD_DIR}"
 
-CMAKE_COMMON_ARGS=(
-  -DMKLUSE=ON
-  -DQE=ON
-  "-DQEVERSION=6.3"
-  "-DQEFILES=${QE_ARCHIVE}"
-  -DN2P2=ON
-  -DCMAKE_C_COMPILER=mpiicx
-  -DCMAKE_CXX_COMPILER=mpiicpx
-  -DCMAKE_Fortran_COMPILER=mpiifx
-)
-if [[ -n "${ONEAPI_RPATH_STR}" ]]; then
-  RPATH_FLAG="-Wl,-rpath,${ONEAPI_RPATH_STR}"
-  EXE_LD_FLAGS="${CMAKE_EXE_LINKER_FLAGS:-}"
-  if [[ -n "${EXE_LD_FLAGS}" ]]; then
-    EXE_LD_FLAGS="${EXE_LD_FLAGS} ${RPATH_FLAG}"
-  else
-    EXE_LD_FLAGS="${RPATH_FLAG}"
-  fi
-  FORTRAN_LINK_EXEC="${CMAKE_Fortran_LINK_EXECUTABLE:-<CMAKE_Fortran_COMPILER> <FLAGS> <CMAKE_Fortran_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>}"
-  if [[ "${FORTRAN_LINK_EXEC}" != *"-Wl,-rpath"* ]]; then
-    FORTRAN_LINK_EXEC="${FORTRAN_LINK_EXEC} ${RPATH_FLAG}"
-  fi
-  CMAKE_COMMON_ARGS+=(
-    "-DCMAKE_BUILD_RPATH=${ONEAPI_RPATH_STR}"
-    "-DCMAKE_INSTALL_RPATH=${ONEAPI_RPATH_STR}"
-    -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON
-    "-DCMAKE_EXE_LINKER_FLAGS=${EXE_LD_FLAGS}"
-    "-DCMAKE_Fortran_LINK_EXECUTABLE=${FORTRAN_LINK_EXEC}"
+  CMAKE_COMMON_ARGS=(
+    -DMKLUSE=ON
+    -DQE=ON
+    "-DQEVERSION=${QE_VERSION}"
+    "-DQEFILES=${QE_ARCHIVE}"
+    -DCMAKE_C_COMPILER=mpiicx
+    -DCMAKE_CXX_COMPILER=mpiicpx
+    -DCMAKE_Fortran_COMPILER=mpiifx
   )
-fi
-
-if (( AENET_ENABLE )); then
-  CMAKE_COMMON_ARGS+=(-DAENET=ON)
-fi
-
-cmake -S "${SRC_DIR}" -B "${BUILD_DIR}" "${CMAKE_COMMON_ARGS[@]}"
-
-echo "==> Building (jobs=${MAKE_JOBS})"
-cmake --build "${BUILD_DIR}" -- -j "${MAKE_JOBS}"
-
-echo "==> Staging binaries"
-mkdir -p "${BUILD_DIR}/bin"
-for bin in pimd.mpi.x pimd.x polymers.x; do
-  if [[ -f "${BUILD_DIR}/${bin}" ]]; then
-    cp "${BUILD_DIR}/${bin}" "${BUILD_DIR}/bin/${bin}"
+  if (( CMAKE_ENABLE_N2P2 )); then
+    CMAKE_COMMON_ARGS+=(-DN2P2=ON)
+  else
+    CMAKE_COMMON_ARGS+=(-DN2P2=OFF)
   fi
-done
+  if [[ -n "${ONEAPI_RPATH_STR}" ]]; then
+    RPATH_FLAG="-Wl,-rpath,${ONEAPI_RPATH_STR}"
+    EXE_LD_FLAGS="${CMAKE_EXE_LINKER_FLAGS:-}"
+    if [[ -n "${EXE_LD_FLAGS}" ]]; then
+      EXE_LD_FLAGS="${EXE_LD_FLAGS} ${RPATH_FLAG}"
+    else
+      EXE_LD_FLAGS="${RPATH_FLAG}"
+    fi
+    FORTRAN_LINK_EXEC="${CMAKE_Fortran_LINK_EXECUTABLE:-<CMAKE_Fortran_COMPILER> <FLAGS> <CMAKE_Fortran_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>}"
+    if [[ "${FORTRAN_LINK_EXEC}" != *"-Wl,-rpath"* ]]; then
+      FORTRAN_LINK_EXEC="${FORTRAN_LINK_EXEC} ${RPATH_FLAG}"
+    fi
+    CMAKE_COMMON_ARGS+=(
+      "-DCMAKE_BUILD_RPATH=${ONEAPI_RPATH_STR}"
+      "-DCMAKE_INSTALL_RPATH=${ONEAPI_RPATH_STR}"
+      -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON
+      "-DCMAKE_EXE_LINKER_FLAGS=${EXE_LD_FLAGS}"
+      "-DCMAKE_Fortran_LINK_EXECUTABLE=${FORTRAN_LINK_EXEC}"
+    )
+  fi
 
-echo "==> Artifacts (if present):"
-( cd "${BUILD_DIR}" && ls -1 pimd.mpi.x pimd.x polymers.x 2>/dev/null || true )
+  if (( AENET_ENABLE )); then
+    CMAKE_COMMON_ARGS+=(-DAENET=ON)
+  fi
+
+  cmake -S "${SRC_DIR}" -B "${BUILD_DIR}" "${CMAKE_COMMON_ARGS[@]}"
+
+  echo "==> Building (jobs=${MAKE_JOBS})"
+  cmake --build "${BUILD_DIR}" -- -j "${MAKE_JOBS}"
+
+  echo "==> Staging binaries"
+  mkdir -p "${BUILD_DIR}/bin"
+  for bin in pimd.mpi.x pimd.x polymers.x; do
+    if [[ -f "${BUILD_DIR}/${bin}" ]]; then
+      cp "${BUILD_DIR}/${bin}" "${BUILD_DIR}/bin/${bin}"
+    fi
+  done
+
+  echo "==> Artifacts (if present):"
+  ( cd "${BUILD_DIR}" && ls -1 pimd.mpi.x pimd.x polymers.x 2>/dev/null || true )
+else
+  echo "==> Building via legacy makefiles"
+  LEGACY_MAKEFILE="${USER_LEGACY_MAKEFILE:-makefiles/makefile.aenet.icex}"
+  LEGACY_FCMP="${USER_LEGACY_FCMP:-mpiifx}"
+  LEGACY_CC="${USER_LEGACY_CC:-icx}"
+
+  if [[ "${LEGACY_MAKEFILE}" != /* ]]; then
+    [[ -f "${SRC_DIR}/${LEGACY_MAKEFILE}" ]] || { echo "ERROR: Legacy makefile ${LEGACY_MAKEFILE} not found under ${SRC_DIR}" >&2; exit 1; }
+  else
+    [[ -f "${LEGACY_MAKEFILE}" ]] || { echo "ERROR: Legacy makefile ${LEGACY_MAKEFILE} not found" >&2; exit 1; }
+  fi
+
+  LEGACY_PARALLEL=()
+  if [[ "${MAKE_JOBS}" =~ ^[0-9]+$ ]] && (( MAKE_JOBS > 1 )); then
+    LEGACY_PARALLEL=(-j "${MAKE_JOBS}")
+  fi
+
+  echo "    makefile : ${LEGACY_MAKEFILE}"
+  echo "    FCMP      : ${LEGACY_FCMP}"
+  echo "    CC        : ${LEGACY_CC}"
+
+  pushd "${SRC_DIR}" >/dev/null
+  make -f "${LEGACY_MAKEFILE}" "${LEGACY_PARALLEL[@]}" clean || true
+  make -f "${LEGACY_MAKEFILE}" "${LEGACY_PARALLEL[@]}" \
+    ${LEGACY_FCMP:+FCMP=${LEGACY_FCMP}} \
+    ${LEGACY_CC:+CC=${LEGACY_CC}} \
+    ${AR:+AR=${AR}} \
+    ${RANLIB:+RANLIB=${RANLIB}}
+  popd >/dev/null
+
+  mkdir -p "${BUILD_DIR}/bin"
+  for bin in pimd.mpi.x pimd.x polymers.x; do
+    if [[ -f "${SRC_DIR}/${bin}" ]]; then
+      cp "${SRC_DIR}/${bin}" "${BUILD_DIR}/bin/${bin}"
+    fi
+  done
+
+  echo "==> Artifacts (if present):"
+  ( cd "${BUILD_DIR}/bin" && ls -1 pimd.mpi.x pimd.x polymers.x 2>/dev/null || true )
+fi
 
 echo "==> Done."
